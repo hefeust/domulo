@@ -23,10 +23,10 @@ based on a Blocks Memory Pool data structure. For ore informations [read this pa
 
 1. create ian initialisation file in ypur root project folder, which imports domulo setup and re-export all symbols :
 
-
+    
     // src/app/wrap.js
     import { wrap } from '@/src/domulo'
-
+    
     // key is a 8-characters alhpanumeric string for salting internal generator
     export const domulo = wrap({ key: 'peACEful '})
 
