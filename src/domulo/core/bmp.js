@@ -2,6 +2,7 @@
 import { createMWC } from '@/src/domulo/core/mwc'
 import { to_string, from_string } from '@/src/domulo/core/keys64'
 import { showBlockDebug, showDebugHeaders, BlockSorts } from '@/src/domulo/vdom/data-blocks'
+
 // sole defaukts for MWC generator
 const MWC_ALPHA_MULTIPLIER = 982579
 const MWC_DIGITS_RANGE = 64  // 64 = A_Za_z0$_-9 keys
@@ -58,7 +59,7 @@ const reallocate  = (bmp) => {
     
   // console.log('bmp#reallocate')
   // console.log(bmp.pool.map(b => b.uid).join(' '))
-  bmp.index.size *= 2;
+  bmp.index.size += s;
 
   bmp.pool.push(...newly)
 }
@@ -71,8 +72,8 @@ const reallocate  = (bmp) => {
  *
  */
 const getBlockByUid = (bmp, uid) => {
-  // console.log( '*** getBlockByUid ***' )
-  // console.log( bmp )  
+//  console.log( '*** getBlockByUid ***' )
+//-  console.log( uid )  
   
   let block = null
   
@@ -171,15 +172,26 @@ const showDebug = (bmp, verbose) => {
   const entries = []
   
   bmp.pool
-          // .filter(b => b.sort !== BlockSorts.EMPTY)
     .map((block, idx) => {
+      let entry = ''
+      
+      // console.log(idx + ' ' + block.uid) 
+      
+      //if (!block) return
+      
       if(idx % 10 === 0) {
         entries.push(showDebugHeaders())
       }
    
-      entries.push(idx.toFixed().padStart(6, ' ') + showBlockDebug(block))
+      entry = idx.toFixed ().padStart (6, ' ') + '\t' 
+              + showBlockDebug (block)
+      
+      entries.push(entry)
     })
   
+    entries.push('*****')
+  // console.log(Object.keys(bmp.lookup))
+
   return entries.join('\n')
 }
 

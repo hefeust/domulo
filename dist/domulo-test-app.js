@@ -116,7 +116,20 @@
     CODE: 'X',
     ATTR: 'A',
     COMMENT: 'C',
-    TEXT: 'T'
+    TEXT: 'T',
+    
+    'VTREE': 'V',
+    'PATCH' : 'P',
+    
+    'PATCH_INSERT_NODE': 'PIN',
+    'PATCH_UPDATE_NODE': 'PUN',
+    'PATCH_DELETE_NODE': 'PDN',
+    'PATCH_INSERT_TEXT': 'PIT',
+    'PATCH_UPDATE_TEXT': 'PUT',
+    'PATCH_DELETE_TEXTR': 'PDT',
+    'PATCH_INSERT_ATRR': 'PIA',
+    'PATCH_UPDATE_ATTR': 'PUA',
+    'PATCH_DDLETE_ATTR': 'PDA'
   };
 
   var clearBlock = function (block) {
@@ -220,7 +233,7 @@
       
     // console.log('bmp#reallocate')
     // console.log(bmp.pool.map(b => b.uid).join(' '))
-    bmp.index.size *= 2;
+    bmp.index.size += s;
 
     (ref = bmp.pool).push.apply(ref, newly);
   };
@@ -233,8 +246,8 @@
    *
    */
   var getBlockByUid = function (bmp, uid) {
-    // console.log( '*** getBlockByUid ***' )
-    // console.log( bmp )  
+  //  console.log( '*** getBlockByUid ***' )
+  //-  console.log( uid )  
     
     var block = null;
     
@@ -333,15 +346,26 @@
     var entries = [];
     
     bmp.pool
-            // .filter(b => b.sort !== BlockSorts.EMPTY)
       .map(function (block, idx) {
+        var entry = '';
+        
+        // console.log(idx + ' ' + block.uid) 
+        
+        //if (!block) return
+        
         if(idx % 10 === 0) {
           entries.push(showDebugHeaders());
         }
      
-        entries.push(idx.toFixed().padStart(6, ' ') + showBlockDebug(block));
+        entry = idx.toFixed ().padStart (6, ' ') + '\t' 
+                + showBlockDebug (block);
+        
+        entries.push(entry);
       });
     
+      entries.push('*****');
+    // console.log(Object.keys(bmp.lookup))
+
     return entries.join('\n')
   };
 
@@ -498,6 +522,16 @@
     return { uid: root.uid }
   };
 
+  var mount = function (bmp, tree, containingELeement) {
+    var vtreeBlock = bmp.getEmptyBlock();
+
+    vtreeBlock.sort = BlockSorts.VTREE; 
+    vtreeBlock.next = tree.uid;
+    
+    
+    return vtreeBlock
+  };
+
   var ORPHANED = ['img', 'br', 'hr', 'link', 'input', 'meta'];
 
   var renderAttrs  = function (bmp, block, props) {
@@ -565,6 +599,210 @@
     return renderTag (bmp, root, props)
   };
 
+  var blocksDiffSort = function (oldTreeBlock, newTreeBlock) {
+    var lhs = oldTreeBlock ? oldTreeBlock.sort : '?'; 
+    var rhs = newTreeBlock ? newTreeBlock.sort : '?';
+   
+    return lhs + ':' + rhs
+  };
+
+  var createDiffBlock = function (bmp, wrappedPatch, params) {
+    var diffBlock = bmp.getEmptyBlock();
+
+    diffBlock.sort = params.sort;
+    diffBlock.puid = params.puid; 
+    diffBlock.name = params.name;
+    diffBlock.value = params.value;
+    
+
+    wrappedPatch.patchBlock.next = diffBlock.uid;
+    wrappedPatch.patchBlock = diffBlock;
+   
+    return diffBlock
+  };
+
+  var diffTags = function (bmp, oldTreeBlock, newTreeBlock, wrappedPatch) {
+    var bds = blocksDiffSort(oldTreeBlock, newTreeBlock);
+    // let patchBlock = null
+    
+    switch (bds) {
+      
+      case (BlockSorts.ELEMENT + ':' + BlockSorts.ELEMENT):
+          if (oldTreeBlock.name !== newTreeBlock.name) {
+            createDiffBlock(bmp, wrappedPatch, {
+              sort: BlockSorts.PATCH_UPDATE_NODE,
+              puid: oldTreeBlock.uid,
+              name: newTreeBlock.name
+            });
+          }
+        break
+        
+      case (BlockSorts.ELEMENT + ':' + BlockSorts.TEXT):
+          createDiffBlock (bmp, wrappedPatch, {
+            sort: BlockSorts.PATCH_DELETE_NODE,
+            puid: oldTreeBlock.uid
+          });
+          
+          createDiffBlock (bmp, wrappedPatch, {
+            sort: BlockSorts.PATCH_INSERT_TEXT,
+            puid: oldTreeBlock.uid,
+            value: newTreeBlock.value
+          });        
+        break
+      case (BlockSorts.TEXT + ':' + BlockSorts.ELEMENT):
+          createDiffBlock (bmp, wrappedPatch, {
+            sort: BlockSorts.PATCH_DLEETE_TEXT,
+            puid: oldTreeBlock.uid 
+          });
+          
+          createDiffBlock (bmp, wrappedPatch, {
+            sort: BlockSorts.PATCH_INSERT_NODE,
+            puid: oldTreeBlock.uid,
+            name: newTreeBlock.name  
+          });
+        break      
+    }
+  };
+
+  var getAttrsBlocksList = function (bmp, block) {
+    var list = [];
+    var attrBlock = null;
+    var attrBlockUID = block.attrs; 
+    
+    while (attrBlockUID !== '0') {
+      attrBlock = bmp.getBlockByUid(attrBlockUID);
+      list.push (attrBlock);
+      attrBlockUID = attrBlock.next;
+    }
+    
+    return list
+  };
+
+  var diffAttrs = function (bmp, oldTreeBlock, newTreeBlock, wrappedPatch) {
+    
+  //  console.log('   * diffAttrs * ')
+  //  console.log('old:\t' + showBlockDebug(oldTreeBlock))
+  //  console.log('new:\t' + showBlockDebug(newTreeBlock))
+    
+    var oldAttrsList = getAttrsBlocksList (bmp, oldTreeBlock);
+    var newAttrsList = getAttrsBlocksList (bmp, newTreeBlock);
+    var collected = new Set();
+    
+    oldAttrsList.map (function (oldAttrBlock) {
+      
+      newAttrsList.map(function (newAttrBlock) {
+        
+        if(oldAttrBlock.name === newAttrBlock.name) {
+          collected.add (oldAttrBlock.name);
+          
+          if (oldAttrBlock.value !== newAttrBlock.value) {
+            createDiffBlock (bmp, wrapeedPatch, {
+              sort: BlockSorts.PATCH_UPDATE_ATTR,
+              puis: oldAttrBlock.uid,
+              name: oldAttrBlock.name,
+              value: newAttrBlock.value
+            });
+          }
+        }
+      });
+    });
+    
+    oldAttrsList.map(function (oldAttrBlock) {
+      if (! collected.has(oldAttrBlock.name)) {
+        createDiffBlock (bmp, wrapeedPatch, {
+          sort: BlockSorts.PATCH_DELETE_ATTR,
+          puis: oldAttrBlock.uid,
+          name: oldAttrBlock.name
+   //       value: newAttrBlock.value
+       });      
+      }
+    });
+    
+    newAttrsList.map(function (newAttrBlock) {
+      if (! collected.has(newAttrBlock.name)) {
+        createDiffBlock (bmp, wrapeedPatch, {
+          sort: BlockSorts.PATCH_INSERT_ATTR,
+          //puid: oldAttrBlock.uid,
+          name: newAttrBlock.name,
+          value: newAttrBlock.value
+       });      
+      }
+    });
+  };
+
+
+  var getNodesBlocksList = function (bmp, block) {
+    var list = [];
+    var nodeBlock = null;
+    var nodeBlockUID = block.nodes; 
+    
+    while (nodeBlockUID !== '0') {
+      nodeBlock = bmp.getBlockByUid(nodeBlockUID);
+      list.push (nodeBlock);
+      nodeBlockUID = nodeBlock.next;
+    }
+    
+    return list};
+
+  /*/*
+   * zip two arrays
+   * 
+   * @param {Array} arr0
+   * @param {Array} arr1
+   * @returns {Array}
+   */
+  var zip = function (arr0, arr1) {
+    if(arr0.length >= arr1.length) {
+      return arr0.map (function (x0, idx0) { return [x0, arr1[idx0]]; })
+    } else {
+      return arr1.map (function (x1, idx1) { return [arr0[idx1]]; }, x1)
+    }
+  };
+
+  var diffNodes = function (bmp, oldTreeBlock, newTreeBlock, patchWrapper) {
+  //  console.log ('   * diffNodes *')
+  //  console.log ( showBlockDebug (oldTreeBlock))
+  //  console.log ( showBlockDebug (newTreeBlock))
+    
+    var oldNodesList = getNodesBlocksList (bmp, oldTreeBlock); 
+    var newNodesList = getNodesBlocksList (bmp, newTreeBlock); 
+    
+    // console.log ('   * diffNodes *')
+    
+    zip (oldNodesList, newNodesList).map(function (entry) {
+      diffTags (entry[0], entry[1]);
+    });
+  };
+
+  /**
+   * diff two trees inside BMP
+   * 
+   * 
+   * @param {BlocksMemoryPool} bmp
+   * @param {Object} oldTree
+   * @param {Object} newTree
+   * @returns {Object} diff wrapper in BMP
+   */
+  var diff = function (bmp, oldTree, newTree) {
+
+     var oldTreeBlock = bmp.getBlockByUid (oldTree.uid);
+     var newTreeBlock = bmp.getBlockByUid (newTree.uid);
+     var patchBlock = bmp.getEmptyBlock();
+     var wrappedPatch = { patchBlock: patchBlock };
+     
+     patchBlock.sort = BlockSorts.PATCH;
+     
+  //   console.log ('=== diff ===')
+  //   console.log('old:\t' + showBlockDebug(oldTreeBlock))
+  //   console.log('new:\t' + showBlockDebug(newTreeBlock))
+     
+     diffTags (bmp, oldTreeBlock, newTreeBlock, wrappedPatch);
+     diffAttrs(bmp, oldTreeBlock, newTreeBlock, wrappedPatch);
+     diffNodes(bmp, oldTreeBlock, newTreeBlock, wrappedPatch);
+
+     return { name: 'patch', uid: patchBlock.uid }
+  };
+
   console.log('@/test/domulo/app/wrap');
 
   var wrap = function (options) {
@@ -580,8 +818,10 @@
         return createVNode (bmp, tagname, attrs, children)
       },  
       
-      mount: function mount (treeUID, containingELement) {
+      mount: function mount$1 (treeUID, containingELement) {
         console.log('*** wrapped.mount ***');
+        
+        mount (bmp, treeUID, containingElement);
       
       },
       
@@ -589,6 +829,11 @@
         console.log(bmp.showDebug(verbose));
       },
       
+      diff: function diff$1 (oldTreeBlock, newTreeBlock) {
+        return diff(bmp, oldTreeBlock, newTreeBlock )
+      },
+      
+          
       render: function render$1 (tree, props) {
         return render(bmp, tree, props)
       }
@@ -631,7 +876,15 @@
 
   var tree = TodoList (props);
 
+  console.log('@/test/domulo/app');
+
   console.log(domulo.showDebug(tree));
-  console.log(domulo.render (tree ));
+  //console.log()
+  // console.log(domulo.render (tree ))
+
+  var dt = domulo.diff(tree, tree);
+
+  console.log('diff trees');
+  console.log(dt);
 
 }));

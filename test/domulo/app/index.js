@@ -15,5 +15,13 @@ const props = {
 
 const tree = TodoList (props)
 
+console.log('@/test/domulo/app')
+
 console.log(domulo.showDebug(tree))
-console.log(domulo.render (tree ))
+//console.log()
+// console.log(domulo.render (tree ))
+
+const dt = domulo.diff(tree, tree)
+
+console.log('diff trees')
+console.log(dt)

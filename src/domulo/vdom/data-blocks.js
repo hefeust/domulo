@@ -6,7 +6,20 @@ export const BlockSorts = {
   CODE: 'X',
   ATTR: 'A',
   COMMENT: 'C',
-  TEXT: 'T'
+  TEXT: 'T',
+  
+  'VTREE': 'V',
+  'PATCH' : 'P',
+  
+  'PATCH_INSERT_NODE': 'PIN',
+  'PATCH_UPDATE_NODE': 'PUN',
+  'PATCH_DELETE_NODE': 'PDN',
+  'PATCH_INSERT_TEXT': 'PIT',
+  'PATCH_UPDATE_TEXT': 'PUT',
+  'PATCH_DELETE_TEXTR': 'PDT',
+  'PATCH_INSERT_ATRR': 'PIA',
+  'PATCH_UPDATE_ATTR': 'PUA',
+  'PATCH_DDLETE_ATTR': 'PDA'
 }
 
 export const clearBlock = (block) => {
