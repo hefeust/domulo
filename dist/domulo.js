@@ -533,71 +533,142 @@
     return vtreeBlock
   };
 
-  var ORPHANED = ['img', 'br', 'hr', 'link', 'input', 'meta'];
+  var ORPHANED_TAGS = 'br,hr,img,input'.split(',');
 
-  var renderAttrs  = function (bmp, block, props) {
-    var results = [];
-    var nextUID = block.attrs; 
+  var getAttrsBlocksList = function (bmp, block) {
+    var list = [];
+    var attrBlock = null;
+    var attrBlockUID = block.attrs; 
     
-    while (nextUID !== '0') {
-  //    console.log(nextUID)
-      
-      var attrBlock = bmp.getBlockByUid(nextUID);
-      
-  //    console.log(attrBlock)
-      
-      results.push(attrBlock.name + '=' + '"' + attrBlock.value + '"');
-      nextUID = attrBlock.next;
+    while (attrBlockUID !== '0') {
+      attrBlock = bmp.getBlockByUid(attrBlockUID);
+      list.push (attrBlock);
+      attrBlockUID = attrBlock.next;
     }
     
-    return results.join(' ')
+    return list
   };
 
 
-  var renderNodes = function (bmp, block, props) {
-    var results = [];
-    var nextUID = block.nodes; 
+  var getNodesBlocksList = function (bmp, block) {
+    var list = [];
+    var nodeBlock = null;
+    var nodeBlockUID = block.nodes; 
     
-    console.log('RenderNode: uid: %s name: %s', block.uid, block.name);
-    
-    while (nextUID !== '0') {
-      var nodeBlock = bmp.getBlockByUid(nextUID);
+  ///  console.log ("-----")
+  //  console.log (bmp)
+  //  console.log ("-----")
+
+    console.log ('* getNodesBlocksList * ');
       
-      if(nodeBlock.sort === BlockSorts.TEXT) {
-        results.push (nodeBlock.value);
-      } else {
-        results.push(renderTag(bmp, nodeBlock, props));
-      }
-      
-      nextUID = nodeBlock.next;
+    while (nodeBlockUID !== '0') {
+      nodeBlock = bmp.getBlockByUid(nodeBlockUID);
+      console.log('node: name=%s sort=%s', nodeBlock.name, nodeBlock.sort);
+      list.push (nodeBlock);
+      nodeBlockUID = nodeBlock.next;
     }
     
-    return results.join('\n')
+    return list
+
   };
 
-  var renderTag = function (bmp, block, props) {
-    // const block = bmp.getBlockByUid(tagUID)
-    var tagname = block.name;
-    var attrs = renderAttrs(bmp, block, props);
-    var nodes = renderNodes(bmp, block, props);
-    
-    var result = '';
 
-    console.log('RenderTag name: %s', block.name);
+  var renderOpeningTag = function (bmp, tagBlock, attrsBlocks, options) {
+  //  console.log('*** renderOpeningTag ***')
+  //  console.log(options)
     
-    if(ORPHANED.indexOf(tagname) > -1) {
-      result = "<" + tagname + " " + attrs + " />";
+    var text = "" + (tagBlock.name);
+    var attrsText = attrsBlocks.reduce(function (acc, ab) { return acc + ' ' + ab.name + '=' + '"' + ab.value + '"'; }, '');
+    
+    
+    text += attrsText === '' ? '' : ' ' + attrsText;
+    
+    if(ORPHANED_TAGS.indexOf(tagBlock.name) > -1) {
+      text = '<' + text  + '/>';
     } else {
-      result = "<" + tagname + " " + attrs + ">\n " + nodes + "\n </" + tagname + ">";
+      text = '<' + text + '>';
     }
     
-    return result
+    options.head.push(text);
+    
+    return text
   };
 
-  var render = function (bmp, tree, props) {
-    var root = bmp.getBlockByUid(tree.uid);
+  var renderNodes = function (bmp, tagBlock, nodesBlock, options) {
+    var text = '';
+    //let nodesText = nodesBlocks.reduce((acc, nb) => acc + ' ' + ab.name + '=' + '"' + ab.value + '"', '')
+    nodesBlock.reduce(function (acc, nb, nbidx) {
+      // console.log('nbidx :' + nbidx )
+      renderTagBlock(bmp, nb, options);
+    }, '');
     
-    return renderTag (bmp, root, props)
+    // options.head.push(text)
+    
+    return text  
+  };
+
+
+  var renderClosingTag = function (bmp, tagBlock, attrsBlocks, options) {
+    var text = '';
+    
+    if(ORPHANED_TAGS.indexOf(tagBlock.name) > -1) {
+      text =  '\n';
+    } else {
+      text =  "</" + (tagBlock.name) + ">";
+    }
+    
+    options.tail.push  (text);
+    
+    return text
+  };
+
+  var renderTextBlock = function (bmp, textBlock, options) {
+    var text = textBlock.value; 
+    
+    options.head.push (text);
+    
+    return text
+  };
+
+  var renderTagBlock = function (bmp, tagBlock, options) {
+    var attrsBlocksList = getAttrsBlocksList(bmp, tagBlock);
+    var nodesBlocksList = getNodesBlocksList(bmp, tagBlock);
+
+    // console.log('*** renderTagBlock ***')
+    // console.log(options)
+    
+    console.log ( 'renderTagBlock name=%s attrs=%d nodes=%s', tagBlock.name, attrsBlocksList.length, nodesBlocksList.length);
+
+    console.log(tagBlock.sort);
+
+    if (tagBlock.sort === BlockSorts.ELEMENT) {
+      // opening tag
+      renderOpeningTag (bmp, tagBlock, attrsBlocksList, options);
+    
+      // render nodes if any
+      renderNodes (bmp, tagBlock, nodesBlocksList, options);
+    
+      // clsoing tag
+      renderClosingTag (bmp, tagBlock, attrsBlocksList, options);
+
+    }
+
+    if (tagBlock.sort === BlockSorts.TEXT) {
+      renderTextBlock (bmp, tagBlock, options);
+    }
+  };
+
+  var render = function (bmp, tree, options) {
+    var tagBlock = bmp.getBlockByUid(tree.uid);
+    
+    options.head = [];
+    options.tail = [];
+    
+    renderTagBlock (bmp, tagBlock, options);
+      
+    console.log(options);
+      
+    return options.head.join('\n') + '\n' + options.tail.join('\n')
   };
 
   var blocksDiffSort = function (oldTreeBlock, newTreeBlock) {
@@ -665,7 +736,7 @@
     }
   };
 
-  var getAttrsBlocksList = function (bmp, block) {
+  var getAttrsBlocksList$1 = function (bmp, block) {
     var list = [];
     var attrBlock = null;
     var attrBlockUID = block.attrs; 
@@ -685,8 +756,8 @@
   //  console.log('old:\t' + showBlockDebug(oldTreeBlock))
   //  console.log('new:\t' + showBlockDebug(newTreeBlock))
     
-    var oldAttrsList = getAttrsBlocksList (bmp, oldTreeBlock);
-    var newAttrsList = getAttrsBlocksList (bmp, newTreeBlock);
+    var oldAttrsList = getAttrsBlocksList$1 (bmp, oldTreeBlock);
+    var newAttrsList = getAttrsBlocksList$1 (bmp, newTreeBlock);
     var collected = new Set();
     
     oldAttrsList.map (function (oldAttrBlock) {
@@ -732,7 +803,7 @@
   };
 
 
-  var getNodesBlocksList = function (bmp, block) {
+  var getNodesBlocksList$1 = function (bmp, block) {
     var list = [];
     var nodeBlock = null;
     var nodeBlockUID = block.nodes; 
@@ -743,7 +814,9 @@
       nodeBlockUID = nodeBlock.next;
     }
     
-    return list};
+    return list
+
+  };
 
   /*/*
    * zip two arrays
@@ -765,8 +838,8 @@
   //  console.log ( showBlockDebug (oldTreeBlock))
   //  console.log ( showBlockDebug (newTreeBlock))
     
-    var oldNodesList = getNodesBlocksList (bmp, oldTreeBlock); 
-    var newNodesList = getNodesBlocksList (bmp, newTreeBlock); 
+    var oldNodesList = getNodesBlocksList$1 (bmp, oldTreeBlock); 
+    var newNodesList = getNodesBlocksList$1 (bmp, newTreeBlock); 
     
     // console.log ('   * diffNodes *')
     
@@ -835,8 +908,8 @@
       },
       
           
-      render: function render$1 (tree, props) {
-        return render(bmp, tree, props)
+      render: function render$1 (tree, options) {
+        return render(bmp, tree, options || {}  )
       }
     };
     

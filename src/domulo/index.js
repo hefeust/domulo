@@ -36,8 +36,8 @@ export const wrap = (options) => {
     },
     
         
-    render (tree, props) {
-      return render(bmp, tree, props)
+    render (tree, options) {
+      return render(bmp, tree, options || {}  )
     }
   }
   

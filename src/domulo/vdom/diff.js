@@ -146,7 +146,9 @@ const getNodesBlocksList = (bmp, block) => {
     nodeBlockUID = nodeBlock.next
   }
   
-  return list}
+  return list
+
+}
 
 /*/*
  * zip two arrays
