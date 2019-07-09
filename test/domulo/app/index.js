@@ -7,7 +7,7 @@ const props = {
   todos:  [
  //   { title: 'todo-1', priority: 1, done: false },
  //   { title: 'todo-2', priority: 5, done: false },
- //   { title: 'todo-3', priority: 4, done: true },
+ //    { title: 'todo-3', priority: 4, done: true },
     { title: 'todo-4', priority: 2, done: false },
     { title: 'todo-5', priority: 3, done: true }
   ]
@@ -23,7 +23,17 @@ console.log(domulo.showDebug(tree))
 console.log('=== domulo.render(tree) ===')
 console.log(domulo.render (tree, { beautify: true }))
 
-const dt = domulo.diff(tree, tree)
+// const dt = domulo.diff(tree, tree)
 
-console.log('diff trees')
-console.log(dt)
+console.log('=== diff trees ===')
+//console.log(dt)
+
+const trees = [null, tree]
+
+trees.map((tree) => {
+  trees.map((other) => {
+    console.log('diff: %s %s', tree, other)
+    domulo.diff(tree, other)
+    console.log('')
+  })
+})
