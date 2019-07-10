@@ -86,7 +86,9 @@ const renderClosingTag = (bmp, tagBlock, attrsBlocks, options) => {
     text =  `</${tagBlock.name}>`
   }
   
-  options.tail.push  (text)
+  // BUGFIX closing tags order
+  //options.tail.push  (text)
+  options.head.push  (text)
   
   return text
 }

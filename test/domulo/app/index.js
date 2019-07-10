@@ -28,6 +28,7 @@ console.log(domulo.render (tree, { beautify: true }))
 console.log('=== diff trees ===')
 //console.log(dt)
 
+/*
 const trees = [null, tree]
 
 trees.map((tree) => {
@@ -37,3 +38,7 @@ trees.map((tree) => {
     console.log('')
   })
 })
+*/
+
+console.log('mounting on real DOM (use script inside browser)')
+domulo.mount(tree, document.getElementById('todos-app'))

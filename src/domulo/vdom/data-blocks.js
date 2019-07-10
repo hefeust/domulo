@@ -17,15 +17,16 @@ export const BlockSorts = {
   'PATCH_INSERT_TEXT': 'PIT',
   'PATCH_UPDATE_TEXT': 'PUT',
   'PATCH_DELETE_TEXTR': 'PDT',
-  'PATCH_INSERT_ATRR': 'PIA',
+  'PATCH_INSERT_ATTR': 'PIA',
   'PATCH_UPDATE_ATTR': 'PUA',
-  'PATCH_DDLETE_ATTR': 'PDA'
+  'PATCH_DELETE_ATTR': 'PDA'
 }
 
 export const clearBlock = (block) => {
   block.puid = '0'
   block.sort = BlockSorts.EMPTY
   block.next = '0'
+  block.rel = '0'
   block.attrs = '0'
   block.nodes = '0'
   block.name = '#n/a!'
@@ -50,18 +51,19 @@ export const showBlockDebug = (block) => {
   const attrs = block.attrs.padStart(6, ' ')
   const nodes = block.nodes.padStart(6, ' ')
   const next = block.next.padStart(6, ' ')
+  const rel = block.rel.padStart(6, ' ')
   const sort = block.sort.padStart(6, ' ')
   const name = block.name.padStart(20, ' ')
   const value = block.value.padStart(20, ' ')
   
 //  return `uid: ${uid} puid: ${puid} attrs: ${attrs} nodes: ${nodes} next: ${next} sort: ${sort} ${name} value: ${value}`
   
-  return `${uid}${puid}${attrs}${nodes}${next}${sort}${name}${value}`
+  return `${uid}${puid}${attrs}${nodes}${next}${rel}${sort}${name}${value}`
   
 }
 
 export const showDebugHeaders = () => {
   return '--------------------------------------------------------------------'  + '\n'
-       + '     #   UID  PUID ATTRS NODES  NEXT  SORT             NAME            VALUE' + '\n'
+       + '     #   UID  PUID ATTRS NODES  NEXT   REL  SORT             NAME            VALUE' + '\n'
        + '--------------------------------------------------------------------'
 }

@@ -1,6 +1,10 @@
 
 import { BlockSorts} from '@/src/domulo/vdom/data-blocks'
 
+/**
+ * the patch types 
+ * @type ENUM
+ */
 const DIFF_TYPES = {
   TAG_TO_TAG:    BlockSorts.ELEMENT + '=>' + BlockSorts.ELEMENT,
   TAG_TO_TEXT:   BlockSorts.ELEMENT + '=>' + BlockSorts.TEXT,
@@ -8,11 +12,18 @@ const DIFF_TYPES = {
   TEXT_TO_TEXT:  BlockSorts.TEXT + '=>' + BlockSorts.TEXT,
   EMPTY_TO_TEXT: BlockSorts.EMPTY + '=>' + BlockSorts.TEXT,
   TEXT_TO_EMPTY: BlockSorts.TEXT + '=>' + BlockSorts.EMPTY,
-  TAG_TO_EMPTY: BlockSorts.TAG + '=>' + BlockSorts.EMPTY,
-  EMPTY_TO_TAG: BlockSorts.EMPTY + '=>' + BlockSorts.TAG,
+  TAG_TO_EMPTY: BlockSorts.ELEMENT + '=>' + BlockSorts.EMPTY,
+  EMPTY_TO_TAG: BlockSorts.EMPTY + '=>' + BlockSorts.ELEMENT,
   EMPTY_TO_EMPTY: BlockSorts.EMPTY + '=>' + BlockSorts.EMPTY
  }
 
+/**
+ * get patch types from 2 trees
+ 
+ * @param {object} oldTreeBlock
+ * @param {object} newTreeBlock
+ * @returns {String}
+ */
 const blocksDiffSort = (oldTreeBlock, newTreeBlock) => {
   const lhs = oldTreeBlock.sort 
   const rhs = newTreeBlock.sort
@@ -20,20 +31,39 @@ const blocksDiffSort = (oldTreeBlock, newTreeBlock) => {
   return lhs + '=>' + rhs
 }
 
-
+/**
+ * create a new patch block
+ * append it to patches listr
+ * 
+ * @param {object} bmp
+ * @param {object} patch
+ * @param {object} params
+ * @returns {undefined}
+ */
 const createPatchBlock = (bmp, patch, params) => {
   const newPatchBlock = bmp.getEmptyBlock()
   
-  newPatchBlock.sort = params.sort 
-  newPatchBlock.rel = params.rel
-  newPatchBlock.name = params.name
-  newPatchBlock.value = params.value
+  console.log('######### createPatchBlock')
+  console.log (params)
+  
+  newPatchBlock.sort = params.sort || '#/a!'
+  newPatchBlock.rel = params.rel || '#/a!'
+  newPatchBlock.name = params.name || '#/a!'
+  newPatchBlock.value = params.value || '#/a!'
 
-
+  patch.patchBlock.next = newPatchBlock.uid
+  patch.patchBlock = newPatchBlock
 }
 
-
-
+/**
+ * get attrs blocks list
+ * 
+ * @TODO move to separate file
+ * 
+ * @param {type} bmp
+ * @param {type} block
+ * @returns {Array|getAttrsBlocksList.list}
+ */
 const getAttrsBlocksList = (bmp, block) => {
   const list = []
   let attrBlock = null
@@ -48,7 +78,15 @@ const getAttrsBlocksList = (bmp, block) => {
   return list
 }
 
-
+/**
+ * get nodes blocks list
+ * 
+ * @TODO move to separate file
+ * 
+ * @param {type} bmp
+ * @param {type} block
+ * @returns {Array|getAttrsBlocksList.list}
+ */
 const getNodesBlocksList = (bmp, block) => {
   const list = []
   let nodeBlock = null
@@ -72,11 +110,22 @@ const getNodesBlocksList = (bmp, block) => {
 }
 
 
-
+/**
+ * diff two tags blocks
+ * 
+ * big switching algorithm to determine with patch to apply
+ * 
+ * @param {type} bmp
+ * @param {type} oldTagBlock
+ * @param {type} newTagBlock
+ * @param {type} patch
+ * @returns {undefined}
+ */
 const diffTagsBlocks = (bmp, oldTagBlock, newTagBlock, patch) => {
   const bds = blocksDiffSort (oldTagBlock, newTagBlock)
 
-  // console.log('    diff tag blocks: ' + bds)
+  console.log('    diff tag blocks: ' + bds)
+  console.log ( oldTagBlock.name + ' ' + newTagBlock.name)
   
   switch (bds) {
     
@@ -151,6 +200,8 @@ const diffTagsBlocks = (bmp, oldTagBlock, newTagBlock, patch) => {
     break 
     
     case DIFF_TYPES.EMPTY_TO_TAG: 
+      console.log('==========================')
+      
       createPatchBlock (bmp, patch, {
         sort: BlockSorts.PATCH_INSERT_NODE,
         rel: oldTagBlock.uid,
@@ -159,11 +210,21 @@ const diffTagsBlocks = (bmp, oldTagBlock, newTagBlock, patch) => {
     break 
     
     case DIFF_TYPES.EMPTY_TO_EMPTY: 
+      // do nothing ...
       return    
     break 
   }
 }
 
+/**
+ * attributes blocks diffing
+ * 
+ * @param {type} bmp
+ * @param {type} oldTagBlock
+ * @param {type} newTagBlock
+ * @param {type} patch
+ * @returns {undefined}
+ */
 const diffAttrsBlocks = (bmp, oldTagBlock, newTagBlock, patch) => {
   const oldAttrsList = getAttrsBlocksList (bmp, oldTagBlock)
   const newAttrsList = getAttrsBlocksList (bmp, newTagBlock)
@@ -286,8 +347,6 @@ const diffTrees = (bmp, oldTree, newTree, patch) => {
  
   }
 
-  //console.log(oldTreeBlock, newTreeBlock)
-
   diffTagsBlocks (bmp, oldTreeBlock, newTreeBlock, patch)
   diffAttrsBlocks (bmp, oldTreeBlock, newTreeBlock, patch)
   diffNodesBlocks (bmp, oldTreeBlock, newTreeBlock, patch)
@@ -297,10 +356,15 @@ export const diff = (bmp, oldTree, newTree) => {
   const patchBlock = bmp.getEmptyBlock()
   const patch = {
     patchBlock,
-    
   }
   
   patchBlock.sort = BlockSorts.PATCH
+  patchBlock.rel = [oldTree && oldTree.uid, newTree && newTree.uid]
   
   diffTrees (bmp, oldTree, newTree, patch)
+
+  return { 
+    name: 'PATCH',
+    uid: patchBlock.uid
+  }
 }

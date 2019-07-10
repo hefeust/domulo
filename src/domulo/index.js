@@ -6,6 +6,7 @@ import { createVNode } from '@/src/domulo/vdom/create-vnode'
 import { mount } from '@/src/domulo/vdom/mount'
 import { render } from '@/src/domulo/vdom/render'
 import { diff } from '@/src/domulo/vdom/diff'
+import { patch } from '@/src/domulo/vdom/patch'
 
 
 console.log('@/test/domulo/app/wrap')
@@ -20,24 +21,28 @@ export const wrap = (options) => {
       return createVNode (bmp, tagname, attrs, children)
     },  
     
-    mount (treeUID, containingELement) {
+    mount (tree, rootElement) {
       console.log('*** wrapped.mount ***')
       
-      mount (bmp, treeUID, containingElement)
+      mount (bmp, tree, rootElement)
+    },
+   
+    diff (oldTree, newTree) {
+      return diff(bmp, oldTree, newTree )
+    },
     
+    patch (deltas, options) {
+      console.log('*** wrapped.mount ***')
+      
+      patch (bmp, deltas, options)
+    },
+        
+    render (tree, options) {
+      return render(bmp, tree, options || {}  )
     },
     
     showDebug(verbose) {
       console.log(bmp.showDebug(verbose))
-    },
-    
-    diff (oldTreeBlock, newTreeBlock) {
-      return diff(bmp, oldTreeBlock, newTreeBlock )
-    },
-    
-        
-    render (tree, options) {
-      return render(bmp, tree, options || {}  )
     }
   }
   

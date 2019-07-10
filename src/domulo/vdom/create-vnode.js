@@ -6,7 +6,7 @@ const createRoot = (bmp, tagname) => {
   
   block.sort = BlockSorts.ELEMENT
   block.name = tagname
-  block.value = '.'
+  block.value = '#n/a!'
   
   return block
 }
