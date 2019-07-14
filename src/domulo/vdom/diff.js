@@ -48,8 +48,10 @@ const createPatchBlock = (bmp, patch, params) => {
   
   newPatchBlock.sort = params.sort || '#/a!'
   newPatchBlock.rel = params.rel || '#/a!'
-  newPatchBlock.name = params.name || '#/a!'
-  newPatchBlock.value = params.value || '#/a!'
+  //newPatchBlock.name = params.name || '#/a!'
+  //newPatchBlock.value = params.value || '#/a!'
+  newPatchBlock.oldie = params.oldie
+  newPatchBlock.newly = params.newly
 
   patch.patchBlock.next = newPatchBlock.uid
   patch.patchBlock = newPatchBlock
@@ -123,6 +125,7 @@ const getNodesBlocksList = (bmp, block) => {
  */
 const diffTagsBlocks = (bmp, oldTagBlock, newTagBlock, patch) => {
   const bds = blocksDiffSort (oldTagBlock, newTagBlock)
+  let sort = BlockSorts.EMPTY
 
   console.log('    diff tag blocks: ' + bds)
   console.log ( oldTagBlock.name + ' ' + newTagBlock.name)
@@ -132,37 +135,39 @@ const diffTagsBlocks = (bmp, oldTagBlock, newTagBlock, patch) => {
     case DIFF_TYPES.TAG_TO_TAG:
       if (oldTagBlock.name === newTagBlock.name) return 
       
+//      sort = BlockSorts.PATCH_UPDATE_NODE,
       createPatchBlock (bmp, patch, {
         sort: BlockSorts.PATCH_UPDATE_NODE,
-        rel:  oldTagBlock.uid,
-        name: newTagBlock.name
+        oldie: oldTagBlock.uid,
+        newly: newTagBlock.uid
       })
     break
     
     case DIFF_TYPES.TAG_TO_TEXT:   
       createPatchBlock (bmp, patch, {
         sort: BlockSorts.PATCH_DELETE_NODE,
-        rel:  oldTagBlock.uid
+        oldie: oldTagBlock.uid,
+        newly: null
       })
       
       createPatchBlock (bmp, patch, {
         sort: BlockSorts.PATCH_INSERT_TEXT,
-        rel:  oldTagBlock.uid,
-        value: newTreeBlock.value
+          oldie: null,
+          newly: newTagBlock.uid
       })
     break 
     
     case DIFF_TYPES.TEXT_TO_TAG:   
       createPatchBlock (bmp, patch, {
         sort: BlockSorts.PATCH_DELETE_TEXT,
-        rel:  oldTagBlock.uid
+          oldie: oldTagBlock.uid,
+          newly: null
       })
       
       createPatchBlock (bmp, patch, {
         sort: BlockSorts.PATCH_INSERT_NODE,
-        rel:  oldTagBlock.uid,
-        name: newTagBlock.name,
-        value: newTreeBlock.name
+        oldie: null,
+        newly: newTagBlock.uid
       })
     
     break
@@ -172,30 +177,32 @@ const diffTagsBlocks = (bmp, oldTagBlock, newTagBlock, patch) => {
       
       createPatchBlock (bmp, patch, {
         sort:BlockSorts.PATCH_UPDATE_TEXT,
-        rel: oldTagBlock.uid,
-        value: newTagBlock.value
+        oldie: oldTagBlock.uid,
+        newly: newTagBlock.uid
       })
     break 
     
     case DIFF_TYPES.EMPTY_TO_TEXT: 
       createPatchBlock (bmp, patch, {
         sort: BlockSorts.PATCH_INSERT_TEXT,
-        rel: oldTagBlock.uid,
-        value: newTagBlock.value
+        oldie: null,
+        newly: newTagBlock.uid
       })
     break 
     
     case DIFF_TYPES.TEXT_TO_EMPTY: 
       createPatchBlock (bmp, patch, {
         sort: BlockSorts.PATCH_DELETE_TEXT,
-        rel: oldTagBlock.uid
+        oldie: oldTagBlock.uid,
+        newly: null
       })
     break 
     
     case DIFF_TYPES.TAG_TO_EMPTY: 
       createPatchBlock (bmp, patch, {
         sort: BlockSorts.PATCH_DELETE_NODE,
-        rel: oldTagBlock.uid
+        oldie: oldTagBlock.uid,
+        newly: null
       })    
     break 
     
@@ -204,8 +211,8 @@ const diffTagsBlocks = (bmp, oldTagBlock, newTagBlock, patch) => {
       
       createPatchBlock (bmp, patch, {
         sort: BlockSorts.PATCH_INSERT_NODE,
-        rel: oldTagBlock.uid,
-        name: newTagBlock.name
+        oldie: null,
+        newly: newTagBlock.uid
       })    
     break 
     
@@ -242,9 +249,8 @@ const diffAttrsBlocks = (bmp, oldTagBlock, newTagBlock, patch) => {
         if (oldAttrBlock.value !== newAttrBlock.value) {
           createPatchBlock (bmp, patch, {
             sort: BlockSorts.PATCH_UPDATE_ATTR,
-            rel: oldAttrBlock.uid,
-            name: oldAttrBlock.name,
-            value: newAttrBlock.value
+            oldie: oldAttrBlock.uid,
+            newly: newAttrBlock.uid
           })
         }
       }
@@ -255,9 +261,8 @@ const diffAttrsBlocks = (bmp, oldTagBlock, newTagBlock, patch) => {
     if (! collected.has(oldAttrBlock.name)) {
       createPatchBlock (bmp, patch, {
         sort: BlockSorts.PATCH_DELETE_ATTR,
-        rel: oldAttrBlock.uid,
-        name: oldAttrBlock.name
- //       value: newAttrBlock.value
+        oldie: oldAttrBlock.uid,
+        newly: null
      })      
     }
   })
@@ -266,9 +271,8 @@ const diffAttrsBlocks = (bmp, oldTagBlock, newTagBlock, patch) => {
     if (! collected.has(newAttrBlock.name)) {
       createPatchBlock (bmp, patch, {
         sort: BlockSorts.PATCH_INSERT_ATTR,
-        //puid: oldAttrBlock.uid,
-        name: newAttrBlock.name,
-        value: newAttrBlock.value
+        oldie: null,
+        newly: newAttrBlock.uid
      })      
     }
   })  
@@ -322,6 +326,8 @@ const diffTrees = (bmp, oldTree, newTree, patch) => {
     oldTreeBlock = bmp.getBlockByUid (oldTree.uid)
     newTreeBlock = bmp.getBlockByUid (newTree.uid)
     
+    newTree.container = oldTree.container
+    
   } else if (oldTree) {
     // tree removal
     console.log ('### tree removal ###')
@@ -347,6 +353,7 @@ const diffTrees = (bmp, oldTree, newTree, patch) => {
  
   }
 
+
   diffTagsBlocks (bmp, oldTreeBlock, newTreeBlock, patch)
   diffAttrsBlocks (bmp, oldTreeBlock, newTreeBlock, patch)
   diffNodesBlocks (bmp, oldTreeBlock, newTreeBlock, patch)
@@ -359,12 +366,14 @@ export const diff = (bmp, oldTree, newTree) => {
   }
   
   patchBlock.sort = BlockSorts.PATCH
-  patchBlock.rel = [oldTree && oldTree.uid, newTree && newTree.uid]
+//  patchBlock.rel = [oldTree && oldTree.uid, newTree && newTree.uid]
   
   diffTrees (bmp, oldTree, newTree, patch)
 
   return { 
     name: 'PATCH',
-    uid: patchBlock.uid
+    uid: patchBlock.uid,
+    oldie: newTree.uid,
+    newly: newTree.uid
   }
 }

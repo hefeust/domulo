@@ -9,7 +9,7 @@ Domulo linearizes the VDOM n-ary tree structure so :
 - it allows filtering nodes and querying against them
 - it's designed to be fast and developper-friendly
 
-It uses internally a Block Memory Pool (preallocated memory) which is a combination of an array of contiguous blocks and a lookup hashmap. This datastructure can hold other graph data structures such as Finite State MAchines, Entity Relational Diagrams and many more.
+It uses internally a Block Memory Pool (preallocated memory) which is a combination of an array of contiguous blocks and a lookup hashmap. This datastructure can hold other graph data structures such as Finite State Machines, Entity Relational Diagrams and many more.
 
 ## DISCLAIMER (WIP)
 

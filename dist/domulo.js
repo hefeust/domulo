@@ -134,10 +134,12 @@
   };
 
   var clearBlock = function (block) {
-    block.puid = '0';
     block.sort = BlockSorts.EMPTY;
+    block.puid = '0';
     block.next = '0';
     block.rel = '0';
+    block.oldie = '0';
+    block.newly = '0';
     block.attrs = '0';
     block.nodes = '0';
     block.name = '#n/a!';
@@ -163,12 +165,14 @@
     var next = block.next.padStart(6, ' ');
     var rel = block.rel.padStart(6, ' ');
     var sort = block.sort.padStart(6, ' ');
+    var oldie = block.oldie.padStart(6, ' ');
+    var newly = block.newly.padStart(6, ' ');
     var name = block.name.padStart(20, ' ');
     var value = block.value.padStart(20, ' ');
     
   //  return `uid: ${uid} puid: ${puid} attrs: ${attrs} nodes: ${nodes} next: ${next} sort: ${sort} ${name} value: ${value}`
     
-    return ("" + uid + puid + attrs + nodes + next + rel + sort + name + value)
+    return ("" + uid + puid + attrs + nodes + next + rel + oldie + newly + sort + name + value)
     
   };
 
@@ -572,8 +576,10 @@
     
     newPatchBlock.sort = params.sort || '#/a!';
     newPatchBlock.rel = params.rel || '#/a!';
-    newPatchBlock.name = params.name || '#/a!';
-    newPatchBlock.value = params.value || '#/a!';
+    //newPatchBlock.name = params.name || '#/a!'
+    //newPatchBlock.value = params.value || '#/a!'
+    newPatchBlock.oldie = params.oldie;
+    newPatchBlock.newly = params.newly;
 
     patch.patchBlock.next = newPatchBlock.uid;
     patch.patchBlock = newPatchBlock;
@@ -656,37 +662,39 @@
       case DIFF_TYPES.TAG_TO_TAG:
         if (oldTagBlock.name === newTagBlock.name) { return } 
         
+  //      sort = BlockSorts.PATCH_UPDATE_NODE,
         createPatchBlock (bmp, patch, {
           sort: BlockSorts.PATCH_UPDATE_NODE,
-          rel:  oldTagBlock.uid,
-          name: newTagBlock.name
+          oldie: oldTagBlock.uid,
+          newly: newTagBlock.uid
         });
       break
       
       case DIFF_TYPES.TAG_TO_TEXT:   
         createPatchBlock (bmp, patch, {
           sort: BlockSorts.PATCH_DELETE_NODE,
-          rel:  oldTagBlock.uid
+          oldie: oldTagBlock.uid,
+          newly: null
         });
         
         createPatchBlock (bmp, patch, {
           sort: BlockSorts.PATCH_INSERT_TEXT,
-          rel:  oldTagBlock.uid,
-          value: newTreeBlock.value
+            oldie: null,
+            newly: newTagBlock.uid
         });
       break 
       
       case DIFF_TYPES.TEXT_TO_TAG:   
         createPatchBlock (bmp, patch, {
           sort: BlockSorts.PATCH_DELETE_TEXT,
-          rel:  oldTagBlock.uid
+            oldie: oldTagBlock.uid,
+            newly: null
         });
         
         createPatchBlock (bmp, patch, {
           sort: BlockSorts.PATCH_INSERT_NODE,
-          rel:  oldTagBlock.uid,
-          name: newTagBlock.name,
-          value: newTreeBlock.name
+          oldie: null,
+          newly: newTagBlock.uid
         });
       
       break
@@ -696,30 +704,32 @@
         
         createPatchBlock (bmp, patch, {
           sort:BlockSorts.PATCH_UPDATE_TEXT,
-          rel: oldTagBlock.uid,
-          value: newTagBlock.value
+          oldie: oldTagBlock.uid,
+          newly: newTagBlock.uid
         });
       break 
       
       case DIFF_TYPES.EMPTY_TO_TEXT: 
         createPatchBlock (bmp, patch, {
           sort: BlockSorts.PATCH_INSERT_TEXT,
-          rel: oldTagBlock.uid,
-          value: newTagBlock.value
+          oldie: null,
+          newly: newTagBlock.uid
         });
       break 
       
       case DIFF_TYPES.TEXT_TO_EMPTY: 
         createPatchBlock (bmp, patch, {
           sort: BlockSorts.PATCH_DELETE_TEXT,
-          rel: oldTagBlock.uid
+          oldie: oldTagBlock.uid,
+          newly: null
         });
       break 
       
       case DIFF_TYPES.TAG_TO_EMPTY: 
         createPatchBlock (bmp, patch, {
           sort: BlockSorts.PATCH_DELETE_NODE,
-          rel: oldTagBlock.uid
+          oldie: oldTagBlock.uid,
+          newly: null
         });    
       break 
       
@@ -728,8 +738,8 @@
         
         createPatchBlock (bmp, patch, {
           sort: BlockSorts.PATCH_INSERT_NODE,
-          rel: oldTagBlock.uid,
-          name: newTagBlock.name
+          oldie: null,
+          newly: newTagBlock.uid
         });    
       break 
       
@@ -764,9 +774,8 @@
           if (oldAttrBlock.value !== newAttrBlock.value) {
             createPatchBlock (bmp, patch, {
               sort: BlockSorts.PATCH_UPDATE_ATTR,
-              rel: oldAttrBlock.uid,
-              name: oldAttrBlock.name,
-              value: newAttrBlock.value
+              oldie: oldAttrBlock.uid,
+              newly: newAttrBlock.uid
             });
           }
         }
@@ -777,9 +786,8 @@
       if (! collected.has(oldAttrBlock.name)) {
         createPatchBlock (bmp, patch, {
           sort: BlockSorts.PATCH_DELETE_ATTR,
-          rel: oldAttrBlock.uid,
-          name: oldAttrBlock.name
-   //       value: newAttrBlock.value
+          oldie: oldAttrBlock.uid,
+          newly: null
        });      
       }
     });
@@ -788,9 +796,8 @@
       if (! collected.has(newAttrBlock.name)) {
         createPatchBlock (bmp, patch, {
           sort: BlockSorts.PATCH_INSERT_ATTR,
-          //puid: oldAttrBlock.uid,
-          name: newAttrBlock.name,
-          value: newAttrBlock.value
+          oldie: null,
+          newly: newAttrBlock.uid
        });      
       }
     });  
@@ -844,6 +851,8 @@
       oldTreeBlock = bmp.getBlockByUid (oldTree.uid);
       newTreeBlock = bmp.getBlockByUid (newTree.uid);
       
+      newTree.container = oldTree.container;
+      
     } else if (oldTree) {
       // tree removal
       console.log ('### tree removal ###');
@@ -869,6 +878,7 @@
    
     }
 
+
     diffTagsBlocks (bmp, oldTreeBlock, newTreeBlock, patch);
     diffAttrsBlocks (bmp, oldTreeBlock, newTreeBlock, patch);
     diffNodesBlocks (bmp, oldTreeBlock, newTreeBlock, patch);
@@ -881,64 +891,45 @@
     };
     
     patchBlock.sort = BlockSorts.PATCH;
-    patchBlock.rel = [oldTree && oldTree.uid, newTree && newTree.uid];
+  //  patchBlock.rel = [oldTree && oldTree.uid, newTree && newTree.uid]
     
     diffTrees (bmp, oldTree, newTree, patch);
 
     return { 
       name: 'PATCH',
-      uid: patchBlock.uid
+      uid: patchBlock.uid,
+      oldie: newTree.uid,
+      newly: newTree.uid
     }
   };
 
-  var getDeltaBlocksList = function (bmp, block) {
-    var list = [];
-    var deltaBlock = null;
-    var deltaBlockUID = block.next; 
+  var PATCH_OPS = {
     
-    while (deltaBlockUID !== '0') {
-  //    console.log ('*** getDeltaBlocksList: %s', deltaBlockUID)
-      
-      deltaBlock = bmp.getBlockByUid(deltaBlockUID);
-      list.push (deltaBlock);
-      deltaBlockUID = deltaBlock.next;
+  };
+
+  var patchDelta = function (bmp, deltaBlock, route, options) {
+    var element = route [ route.length - 1];
+    var children = [].concat( element.childNodes );
+    
+    for (var idx = 0; idx < children.length; idx++) {
+      PATCH_OPS [ deltaBlock.sort ] ();
     }
     
-    return list
   };
 
-  var patchTree = function (bmp, treeBlcok, deltaBlocksList, options) {
-    var texts = [];
-
-    deltaBlocksList.map (function (db) {
-  //    console.log(db)
-  //    texts.push (`sort: ${db.sort} name: ${db.name} value: ${db.value}`)
-      texts.push ( showBlockDebug (db) );
-    });
-
-    console.log ( texts.join ('\n'));
+  var patch = function (bmp, deltas, options) {
+    var route = [ delta.container ];  
+    
+    patchDelta ();
   };
 
-  var patch = function (bmp, tree, deltas, options) {
-    var treeBlock = bmp.getBlockByUid (tree.uid);
-    var deltaBlock = bmp.getBlockByUid (deltas.uid);
-    var deltaBlocksList = getDeltaBlocksList (bmp, deltaBlock);
+  var mount = function (bmp, vtree, container) {
+    //const treeBlock = bmp.getBlockByUid (vtree.uid)
+    var deltas = diff (bmp, null, vtree);
 
-    if (treeBlock.name === '#container!') {
-      patchTree (bmp, treeBlock, deltaBlocksList, options || {});
-    } else {
-      console.log('@src/domulo/vdom/patchT#patchTree: no such container !');
-    }
-  };
-
-  var mount = function (bmp, tree, container) {
-    var treeBlock = bmp.getBlockByUid (tree.uid);
-    var deltas = diff (bmp, null, tree);
-
-    treeBlock.name = '#container!';
-    treeBlock.value = container;
+    deltas.container = container;
       
-    patch (bmp, tree, deltas, { rembmer:  false });
+    patch (bmp, deltas, { remebmer:  false });
   };
 
   var ORPHANED_TAGS = 'br,hr,img,input'.split(',');
@@ -1025,6 +1016,7 @@
       text =  "</" + (tagBlock.name) + ">";
     }
     
+    // BUGFIX closing tags order
     //options.tail.push  (text)
     options.head.push  (text);
     

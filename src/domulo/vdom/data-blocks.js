@@ -23,10 +23,12 @@ export const BlockSorts = {
 }
 
 export const clearBlock = (block) => {
-  block.puid = '0'
   block.sort = BlockSorts.EMPTY
+  block.puid = '0'
   block.next = '0'
   block.rel = '0'
+  block.oldie = '0'
+  block.newly = '0'
   block.attrs = '0'
   block.nodes = '0'
   block.name = '#n/a!'
@@ -53,12 +55,14 @@ export const showBlockDebug = (block) => {
   const next = block.next.padStart(6, ' ')
   const rel = block.rel.padStart(6, ' ')
   const sort = block.sort.padStart(6, ' ')
+  const oldie = block.oldie.padStart(6, ' ')
+  const newly = block.newly.padStart(6, ' ')
   const name = block.name.padStart(20, ' ')
   const value = block.value.padStart(20, ' ')
   
 //  return `uid: ${uid} puid: ${puid} attrs: ${attrs} nodes: ${nodes} next: ${next} sort: ${sort} ${name} value: ${value}`
   
-  return `${uid}${puid}${attrs}${nodes}${next}${rel}${sort}${name}${value}`
+  return `${uid}${puid}${attrs}${nodes}${next}${rel}${oldie}${newly}${sort}${name}${value}`
   
 }
 

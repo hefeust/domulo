@@ -1,42 +1,37 @@
 
-import { BlockSorts, showBlockDebug } from '@/src/domulo/vdom/data-blocks'
+import { BlockSorts } from '@/src/domulo/vdom/data-blocks'
 
-const getDeltaBlocksList = (bmp, block) => {
-  const list = []
-  let deltaBlock = null
-  let deltaBlockUID = block.next 
+const insertNode = (element, newly, oldNode) => {
+  const newNode = document.createElement (newly.name)
   
-  while (deltaBlockUID !== '0') {
-//    console.log ('*** getDeltaBlocksList: %s', deltaBlockUID)
-    
-    deltaBlock = bmp.getBlockByUid(deltaBlockUID)
-    list.push (deltaBlock)
-    deltaBlockUID = deltaBlock.next
+  element.appendChild (newNode)
+}
+
+const deleteNode = () => {}
+
+const insertText = () => {}
+
+const deleteText = () => {}
+
+const PATCH_OPS = {
+  
+}
+
+const patchDelta = (bmp, deltaBlock, route, options) => {
+  const element = route [ route.length - 1]
+  const children = [...element.childNodes]
+  
+  for (let idx = 0; idx < children.length; idx++) {
+    PATCH_OPS [ deltaBlock.sort ] ()
   }
   
-  return list
 }
 
-const patchTree = (bmp, treeBlcok, deltaBlocksList, options) => {
-  const texts = []
-
-  deltaBlocksList.map (db => {
-//    console.log(db)
-//    texts.push (`sort: ${db.sort} name: ${db.name} value: ${db.value}`)
-    texts.push ( showBlockDebug (db) )
-  })
-
-  console.log ( texts.join ('\n'))
+export const patch = (bmp, deltas, options) => {
+  const route = [ delta.container ]  
+  
+  patchDelta ()
 }
 
-export const patch = (bmp, tree, deltas, options) =>  {
-  const treeBlock = bmp.getBlockByUid (tree.uid)
-  const deltaBlock = bmp.getBlockByUid (deltas.uid)
-  const deltaBlocksList = getDeltaBlocksList (bmp, deltaBlock)
 
-  if (treeBlock.name === '#container!') {
-    patchTree (bmp, treeBlock, deltaBlocksList, options || {})
-  } else {
-    console.log('@src/domulo/vdom/patchT#patchTree: no such container !')
-  }
-}
+
