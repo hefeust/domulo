@@ -1,7 +1,7 @@
 
 # Domulo user's guide
 
-Domulo is a VDOM implementation experiment with an alternate and fast way to store and do things.
+Domulo is a VDOM implementation experiment with an alternate and fast way to store and do things. Its name comes from the use of MWC (Multiply With Carry) number generators used to store data inside Block Meory Pool internal data structure.
 
 Domulo linearizes the VDOM n-ary tree structure so :
 

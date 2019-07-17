@@ -141,6 +141,7 @@
     block.newly = '0';
     block.attrs = '0';
     block.nodes = '0';
+    block.route = '';
     block.name = '#n/a!';
     block.value = '#n/a!';
       
@@ -570,13 +571,15 @@
   var createPatchBlock = function (bmp, patch, params) {
     var newPatchBlock = bmp.getEmptyBlock();
     
-    console.log('######### createPatchBlock');
-    console.log (params);
+    // console.log('######### createPatchBlock')
+    // console.log (params)
     
     newPatchBlock.sort = params.sort || '#/a!';
     newPatchBlock.rel = params.rel || '#/a!';
-    //newPatchBlock.name = params.name || '#/a!'
-    //newPatchBlock.value = params.value || '#/a!'
+
+    // patching route
+    newPatchBlock.route = params.route && params.route.oldie.join('/') + '!' + params.route.newly.join('/');
+
     newPatchBlock.oldie = params.oldie;
     newPatchBlock.newly = params.newly;
 
@@ -650,7 +653,7 @@
    * @param {type} patch
    * @returns {undefined}
    */
-  var diffTagsBlocks = function (bmp, oldTagBlock, newTagBlock, patch) {
+  var diffTagsBlocks = function (bmp, oldTagBlock, newTagBlock, route, patch) {
     var bds = blocksDiffSort (oldTagBlock, newTagBlock);
 
     console.log('    diff tag blocks: ' + bds);
@@ -665,7 +668,8 @@
         createPatchBlock (bmp, patch, {
           sort: BlockSorts.PATCH_UPDATE_NODE,
           oldie: oldTagBlock.uid,
-          newly: newTagBlock.uid
+          newly: newTagBlock.uid,
+          route: route
         });
       break
       
@@ -673,13 +677,15 @@
         createPatchBlock (bmp, patch, {
           sort: BlockSorts.PATCH_DELETE_NODE,
           oldie: oldTagBlock.uid,
-          newly: null
+          newly: null,
+          route: route
         });
         
         createPatchBlock (bmp, patch, {
           sort: BlockSorts.PATCH_INSERT_TEXT,
-            oldie: null,
-            newly: newTagBlock.uid
+          oldie: null,
+          newly: newTagBlock.uid,
+          route: route
         });
       break 
       
@@ -687,13 +693,15 @@
         createPatchBlock (bmp, patch, {
           sort: BlockSorts.PATCH_DELETE_TEXT,
             oldie: oldTagBlock.uid,
-            newly: null
+            newly: null,
+            route: route
         });
         
         createPatchBlock (bmp, patch, {
           sort: BlockSorts.PATCH_INSERT_NODE,
           oldie: null,
-          newly: newTagBlock.uid
+          newly: newTagBlock.uid,
+          route: route
         });
       
       break
@@ -704,7 +712,8 @@
         createPatchBlock (bmp, patch, {
           sort:BlockSorts.PATCH_UPDATE_TEXT,
           oldie: oldTagBlock.uid,
-          newly: newTagBlock.uid
+          newly: newTagBlock.uid,
+          route: route
         });
       break 
       
@@ -712,7 +721,8 @@
         createPatchBlock (bmp, patch, {
           sort: BlockSorts.PATCH_INSERT_TEXT,
           oldie: null,
-          newly: newTagBlock.uid
+          newly: newTagBlock.uid,
+          route: route
         });
       break 
       
@@ -720,7 +730,8 @@
         createPatchBlock (bmp, patch, {
           sort: BlockSorts.PATCH_DELETE_TEXT,
           oldie: oldTagBlock.uid,
-          newly: null
+          newly: null,
+          route: route
         });
       break 
       
@@ -728,7 +739,8 @@
         createPatchBlock (bmp, patch, {
           sort: BlockSorts.PATCH_DELETE_NODE,
           oldie: oldTagBlock.uid,
-          newly: null
+          newly: null,
+          route: route
         });    
       break 
       
@@ -738,7 +750,8 @@
         createPatchBlock (bmp, patch, {
           sort: BlockSorts.PATCH_INSERT_NODE,
           oldie: null,
-          newly: newTagBlock.uid
+          newly: newTagBlock.uid,
+          route: route
         });    
       break 
       
@@ -758,7 +771,7 @@
    * @param {type} patch
    * @returns {undefined}
    */
-  var diffAttrsBlocks = function (bmp, oldTagBlock, newTagBlock, patch) {
+  var diffAttrsBlocks = function (bmp, oldTagBlock, newTagBlock, route, patch) {
     var oldAttrsList = getAttrsBlocksList (bmp, oldTagBlock);
     var newAttrsList = getAttrsBlocksList (bmp, newTagBlock);
     var collected = new Set();
@@ -774,7 +787,8 @@
             createPatchBlock (bmp, patch, {
               sort: BlockSorts.PATCH_UPDATE_ATTR,
               oldie: oldAttrBlock.uid,
-              newly: newAttrBlock.uid
+              newly: newAttrBlock.uid,
+              route: route
             });
           }
         }
@@ -786,7 +800,8 @@
         createPatchBlock (bmp, patch, {
           sort: BlockSorts.PATCH_DELETE_ATTR,
           oldie: oldAttrBlock.uid,
-          newly: null
+          newly: null,
+          route: route
        });      
       }
     });
@@ -796,7 +811,8 @@
         createPatchBlock (bmp, patch, {
           sort: BlockSorts.PATCH_INSERT_ATTR,
           oldie: null,
-          newly: newAttrBlock.uid
+          newly: newAttrBlock.uid,
+          route: route
        });      
       }
     });  
@@ -823,23 +839,42 @@
   };
 
 
-  var diffNodesBlocks = function (bmp, oldTagBlock, newTagBlock, patch) {
+  var diffNodesBlocks = function (bmp, oldTagBlock, newTagBlock, route, patch) {
     var oldNodesList = getNodesBlocksList (bmp, oldTagBlock); 
     var newNodesList = getNodesBlocksList (bmp, newTagBlock); 
+    var olen = oldNodesList.length;
+    var nlen = newNodesList.length;
     
-    // console.log ('   * diffNodes *')
-    // console.log(oldNodesList.length)
-    // console.log(newNodesList.length)
+    console.log('BEFORE ZIP : %s %s', olen, nlen );
     
-    zip (oldNodesList, newNodesList).map(function (entry) {
+    zip (oldNodesList, newNodesList).map(function (entry, idx) {
+      console.log('zip ' + idx + ' ############################');
       
-      diffTrees (bmp, entry[0], entry[1], patch);
-      //diffTagsBlocks (entry[0], entry[1])
-    });
+  //    console.log (route.oldie)
+  //    console.log (route.newly)
+      
+      //if (idx === 4) throw new Error('ERROR')
+      
+      if (nlen > olen) {
+        route.newly.push(idx);
+      } else {
+        route.oldie.push(idx);
+      }
+      
+      
+      diffTrees (bmp, entry[0], entry[1], route, patch);
 
+      //if (idx === 4) throw new Error('ERROR')
+
+      if (nlen > olen) {
+        route.newly.pop ();
+      } else {
+        route.oldie.pop ();
+      }
+    });
   };
 
-  var diffTrees = function (bmp, oldTree, newTree, patch) {
+  var diffTrees = function (bmp, oldTree, newTree, route, patch) {
     var oldTreeBlock;
     var newTreeBlock;
 
@@ -878,13 +913,18 @@
     }
 
 
-    diffTagsBlocks (bmp, oldTreeBlock, newTreeBlock, patch);
-    diffAttrsBlocks (bmp, oldTreeBlock, newTreeBlock, patch);
-    diffNodesBlocks (bmp, oldTreeBlock, newTreeBlock, patch);
+    // diffTagsBlocks (bmp, oldTreeBlock, newTreeBlock, patch)
+    // diffAttrsBlocks (bmp, oldTreeBlock, newTreeBlock, patch)
+    //diffNodesBlocks (bmp, oldTreeBlock, newTreeBlock, patch)
+
+    diffTagsBlocks (bmp, oldTreeBlock, newTreeBlock, route, patch);
+    diffAttrsBlocks (bmp, oldTreeBlock, newTreeBlock, route, patch);
+    diffNodesBlocks (bmp, oldTreeBlock, newTreeBlock, route, patch);
   };
 
   var diff = function (bmp, oldTree, newTree) {
     var patchBlock = bmp.getEmptyBlock();
+    var route = { oldie: [0], newly: [0] };
     var patch = {
       patchBlock: patchBlock,
     };
@@ -892,7 +932,8 @@
     patchBlock.sort = BlockSorts.PATCH;
   //  patchBlock.rel = [oldTree && oldTree.uid, newTree && newTree.uid]
     
-    diffTrees (bmp, oldTree, newTree, patch);
+    //diffTrees (bmp, oldTree, newTree, route, patch)
+    diffTrees (bmp, oldTree, newTree, route, patch);
 
     return { 
       name: 'PATCH',
@@ -902,24 +943,152 @@
     }
   };
 
-  var PATCH_OPS = {
-    
+  var insertNode = function (element, newly, oldNode) {
+    console.log('insertNode', element, oldNode);
+    var newNode = document.createElement (newly.name);
+    element.appendChild (newNode);
   };
 
-  var patchDelta = function (bmp, deltaBlock, route, options) {
-    var element = route [ route.length - 1];
-    var children = [].concat( element.childNodes );
+  var updateNode = function (element, newly, oldNode) {
+    console.log('insertNode', element, oldNode);
+    var newNode = document.createElement (newly.name);
+    element.replaceChild (newNode, oldNode);
+  };
+
+  var deleteNode = function () {};
+
+  var insertText = function (element, newlyBlock, oldNode) {
+    console.log('insertText', element, oldNode);
+    var newNode = document.createTextNode (newlyBlock.value);
+    element.appendChild (newNode);  
+  };
+
+  var updateText = function () {};
+  var deleteText = function () {};
+
+  var insertAttr = function () {};
+  var updateAttr = function () {};
+  var deleteAttr = function () {};
+
+  var PATCH_OPS = {};
+
+  PATCH_OPS [ BlockSorts.PATCH_INSERT_NODE ] = insertNode;
+  PATCH_OPS [ BlockSorts.PATCH_INSERT_TEXT ] = insertText;
+  PATCH_OPS [ BlockSorts.PATCH_INSERT_ATTR ] = insertAttr;
+
+  PATCH_OPS [ BlockSorts.PATCH_UPDATE_NODE ] = updateNode;
+  PATCH_OPS [ BlockSorts.PATCH_UPDATE_TEXT ] = updateText;
+  PATCH_OPS [ BlockSorts.PATCH_UPDATE_ATTR ] = updateAttr;
+
+  PATCH_OPS [ BlockSorts.PATCH_DELETE_NODE ] = deleteNode;
+  PATCH_OPS [ BlockSorts.PATCH_DELETE_TEXT ] = deleteText;
+  PATCH_OPS [ BlockSorts.PATCH_DLEETE_ATTR ] = deleteAttr;
+
+
+
+  var patchTag = function (bmp, root, delta, visiting, options) {
+    var used = false;
+    console.log ('*** patch DOM root TAG ***');
     
-    for (var idx = 0; idx < children.length; idx++) {
-      PATCH_OPS [ deltaBlock.sort ] ();
+    var visited = [visiting.oldie.join('/'), visiting.newly.join('/')].join('!');
+    var oldNode = null;
+    var newlyBlock = bmp.getBlockByUid (delta.newly);
+    
+    if (delta.route = visited) {
+      used = true;
+      PATCH_OPS [ delta.sort] (root, newlyBlock, oldNode);
     }
     
+    return used
+  };
+
+
+  var patchAttrs = function (bmp,root, delta, visiting, options) {
+    console.log ('*** patch DOM attributes ***');
+    return false
+  };
+
+
+  var patchNodes = function (bmp, root, delta, visiting, options) {
+    console.log ('*** patch DOM nodes ***');
+    
+    var children = root.childNodes;
+    
+    var used = false;
+    
+    if (visiting.level > 20) { throw new Error ('#RECURSION!') }
+    
+    for (var idx = 0; idx < children.length; idx++) {
+      var discovery = {};
+      var child = children [idx];
+      
+      discovery.oldie = visiting.oldie.slice(0);
+      discovery.newly = visiting.newly.slice(0);
+      
+      if(delta.oldie) {
+        discovery.oldie.push (idx);  
+      } else {
+        discovery.oldie [discovery.oldie.length - 1]++;
+      }
+
+      if(delta.newly) {
+        discovery.newly.push (idx);  
+      } else {
+        discovery.newly [discovery.newly.length - 1]++;
+      }    
+      
+      discovery.level = visiting.level + 1;
+      discovery.rank = idx;
+      
+      console.log ('=========================');
+      
+      used = patchDOM (bmp, child, delta, discovery, options);
+      
+      if (used) { break }
+    }
+    
+    return used
+  };
+
+  var patchDOM = function (bmp, root, delta, visiting, options) {
+    var used = false;
+    
+    console.log ('=== patch DOM recursively ===');
+    console.log ('root', root);
+    
+    used = patchTag (bmp, root, delta, visiting, options);  
+    used = used && patchAttrs (bmp, root, delta, visiting, options);  
+    used = used && patchNodes (bmp, root, delta, visiting, options);  
+    
+    return used
   };
 
   var patch = function (bmp, deltas, options) {
-    var route = [ delta.container ];  
     
-    patchDelta ();
+    var root = deltas.container;
+    var delta = bmp.getBlockByUid (deltas.uid);
+    var deltaBlockUid = delta.next;
+    var rank = 0;
+    
+    while (deltaBlockUid !== '0') {
+      var deltaBlock = bmp.getBlockByUid (deltaBlockUid);
+      var visitingInfos = { 
+        level: 0,
+        rank: 0,
+        oldie: [0], 
+        newly: [0] 
+      };
+      
+      patchDOM (bmp, root, deltaBlock, visitingInfos, options);
+      deltaBlockUid = deltaBlock.next;
+      rank++;
+
+      console.log('PATCH #' + rank);
+      console.log(deltaBlock);
+      console.log(visitingInfos);
+      console.log(rank);
+
+    }
   };
 
   var mount = function (bmp, vtree, container) {
@@ -1118,35 +1287,25 @@
 
   var domulo = wrap({ key: 'peaceful '});
 
-  var TodoItem = function (props) {
-    return domulo.h('li', { className: 'todo-item' },
-      domulo.h('p', {}, 
-        domulo.h('span', {}, props.title),
-        domulo.h('span', {}, props.done)
+  // const tree = TodoList (props)
+
+  /*
+  const tree = domulo.h ('div', {}, 
+    domulo.h('h1', {}, 
+      domulo.h('b', {}, 
+        domulo.h('i', {},'h1 bold italic')
       )
-    )
-  };
+    ),
+    domulo.h('h2', {}, 'H2'),
+    domulo.h('h3', {}, 'H3')          
+  )
+  */
 
-  var TodoList = function (props) {
-    return domulo.h('section', { className: 'todo-list'},
-      domulo.h('h1', {}, 'Todo List items'),
-      domulo.h('ul', {}, 
-        props.todos.map(function (todo) { return TodoItem(todo); })
-      )
-    )
-  };
-
-  var props = {
-    todos:  [
-   //   { title: 'todo-1', priority: 1, done: false },
-   //   { title: 'todo-2', priority: 5, done: false },
-   //    { title: 'todo-3', priority: 4, done: true },
-      { title: 'todo-4', priority: 2, done: false },
-      { title: 'todo-5', priority: 3, done: true }
-    ]
-  };
-
-  var tree = TodoList (props);
+  var tree = domulo.h('ul', {}, 
+    domulo.h('li', {}, 'item-1'),
+    domulo.h('li', {}, 'item-2'),
+    domulo.h('li', {}, 'item-3')
+  );
 
   console.log('@/test/domulo/app');
 

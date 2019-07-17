@@ -31,6 +31,7 @@ export const clearBlock = (block) => {
   block.newly = '0'
   block.attrs = '0'
   block.nodes = '0'
+  block.route = ''
   block.name = '#n/a!'
   block.value = '#n/a!'
     
