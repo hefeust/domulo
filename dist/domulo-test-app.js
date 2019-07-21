@@ -1246,6 +1246,8 @@
     return wrapper
   };
 
+  // key should be  an 8-digits string length
+  // with values taken from /A-Za-z$_0-9/
   var domulo = wrap({ key: 'peaceful '});
 
   var TodoItem = function (props) {
@@ -1266,6 +1268,7 @@
     )
   };
 
+  // feed some data...
   var props = {
     todos:  [
       { title: 'todo-1', priority: 1, done: false },
@@ -1276,19 +1279,8 @@
     ]
   };
 
+  // build the VDOM tree...
   var tree = TodoList (props);
-
-  /*
-  const tree = domulo.h ('div', {}, 
-    domulo.h('h1', {}, 
-      domulo.h('b', {}, 
-        domulo.h('i', {},'h1 bold italic')
-      )
-    ),
-    domulo.h('h2', {}, 'H2'),
-    domulo.h('h3', {}, 'H3')          
-  )
-  */
 
   var tree1 = domulo.h('ul', {}, 
     domulo.h('li', {}, 'item-1'),
@@ -1301,13 +1293,10 @@
   console.log('==== domulo.showDebug(tree)');
   console.log(domulo.showDebug(tree));
 
-  console.log('=== domulo.render(tree) ===');
+  console.log('=== domulo.render(tree) string representation ===');
   console.log(domulo.render (tree, { beautify: true }));
 
-  // const dt = domulo.diff(tree, tree)
-
   console.log('=== diff trees ===');
-  //console.log(dt)
 
   /*
   const trees = [null, tree]

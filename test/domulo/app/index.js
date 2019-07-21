@@ -1,8 +1,12 @@
 
+// first of all, include the lib wrapper with ket-initialization code
 import { domulo } from "@/test/domulo/app/wrap"
+
+// then include your functional components/widgets
 import { TodoList } from '@/test/domulo/app/todo-list'
 import { TodoItem } from '@/test/domulo/app/todo-item'
 
+// feed some data...
 const props = {
   todos:  [
     { title: 'todo-1', priority: 1, done: false },
@@ -13,19 +17,8 @@ const props = {
   ]
 }
 
+// build the VDOM tree...
 const tree = TodoList (props)
-
-/*
-const tree = domulo.h ('div', {}, 
-  domulo.h('h1', {}, 
-    domulo.h('b', {}, 
-      domulo.h('i', {},'h1 bold italic')
-    )
-  ),
-  domulo.h('h2', {}, 'H2'),
-  domulo.h('h3', {}, 'H3')          
-)
-*/
 
 const tree1 = domulo.h('ul', {}, 
   domulo.h('li', {}, 'item-1'),
@@ -38,13 +31,10 @@ console.log('@/test/domulo/app')
 console.log('==== domulo.showDebug(tree)')
 console.log(domulo.showDebug(tree))
 
-console.log('=== domulo.render(tree) ===')
+console.log('=== domulo.render(tree) string representation ===')
 console.log(domulo.render (tree, { beautify: true }))
 
-// const dt = domulo.diff(tree, tree)
-
 console.log('=== diff trees ===')
-//console.log(dt)
 
 /*
 const trees = [null, tree]
