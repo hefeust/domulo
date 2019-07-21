@@ -1,5 +1,5 @@
 
-# Domulo user's guide
+# Domulo LIB USER's guide
 
 Domulo is a VDOM implementation experiment with an alternate and fast way to store and do things. Its name comes from the use of MWC (Multiply With Carry) number generators used to store data inside Block Meory Pool internal data structure.
 
@@ -10,6 +10,14 @@ Domulo linearizes the VDOM n-ary tree structure so :
 - it's designed to be fast and developper-friendly
 
 It uses internally a Block Memory Pool (preallocated memory) which is a combination of an array of contiguous blocks and a lookup hashmap. This datastructure can hold other graph data structures such as Finite State Machines, Entity Relational Diagrams and many more.
+
+## Goals
+
+- fast query and filter Virtual Nodes
+- ability to stream VDOM and VPatches
+- Downside Garbage Coolection jerky cycles
+- patch/unpatch real DOM (rollback = time travelling ability)
+- encapsulation and securing (consistence safety) of VTREEs
 
 ## DISCLAIMER (WIP)
 
@@ -25,6 +33,7 @@ based on a Blocks Memory Pool data structure. For ore informations [read this pa
 
     ```
     // src/app/wrap.js
+    // here we use rollup plugin alias in paths...
     import { wrap } from '@/src/domulo'
     
     // key is a 8-characters alhpanumeric string for salting internal generator
@@ -57,6 +66,7 @@ based on a Blocks Memory Pool data structure. For ore informations [read this pa
     import { domulo } from 'src/app/wrap.js'
     import { TodoList } from 'src/app/todo-list.js'
 
+    // feed with some data
     const props = {
       todos: [
         { title: 'code', done: true },
@@ -71,7 +81,7 @@ based on a Blocks Memory Pool data structure. For ore informations [read this pa
 
 Domulo is based on functional components. You can also use JSX.
 
-## Roadmap
+## Quick Roadmap
 
 * mount/diff/patch functions to implement
 * serialize/deserialize/stream to implement

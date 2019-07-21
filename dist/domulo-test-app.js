@@ -1015,6 +1015,16 @@
     
   };
 
+  /**
+   * the patching algorithm
+   * 
+   * given a list of deltas, patches the real DOM
+   * 
+   * @param {Object} bmp
+   * @param {Object} deltas
+   * @param {Object} options
+   * @returns {undefined}
+   */
   var patch = function (bmp, deltas, options) {
     var root = deltas.container;
     
@@ -1061,8 +1071,17 @@
     patch (bmp, deltas, { remebmer:  false });
   };
 
+  // list of orphaned (standalone) HTML tags
   var ORPHANED_TAGS = 'br,hr,img,input'.split(',');
 
+  /**
+   * get the attrs blocks list
+   * for a given tag block in Blocck Memory Pool
+   * 
+   * @param {Object} bmp
+   * @param {Ovject} block
+   * @returns {Array|getAttrsBlocksList.list}
+   */
   var getAttrsBlocksList$1 = function (bmp, block) {
     var list = [];
     var attrBlock = null;
@@ -1082,16 +1101,11 @@
     var list = [];
     var nodeBlock = null;
     var nodeBlockUID = block.nodes; 
-    
-  ///  console.log ("-----")
-  //  console.log (bmp)
-  //  console.log ("-----")
 
-    console.log ('* getNodesBlocksList * ');
+    //console.log ('* getNodesBlocksList * ')
       
     while (nodeBlockUID !== '0') {
       nodeBlock = bmp.getBlockByUid(nodeBlockUID);
-      console.log('node: name=%s sort=%s', nodeBlock.name, nodeBlock.sort);
       list.push (nodeBlock);
       nodeBlockUID = nodeBlock.next;
     }
@@ -1102,9 +1116,6 @@
 
 
   var renderOpeningTag = function (bmp, tagBlock, attrsBlocks, options) {
-  //  console.log('*** renderOpeningTag ***')
-  //  console.log(options)
-    
     var text = "" + (tagBlock.name);
     var attrsText = attrsBlocks.reduce(function (acc, ab) { return acc + ' ' + ab.name + '=' + '"' + ab.value + '"'; }, '');
     
@@ -1163,13 +1174,10 @@
   var renderTagBlock = function (bmp, tagBlock, options) {
     var attrsBlocksList = getAttrsBlocksList$1(bmp, tagBlock);
     var nodesBlocksList = getNodesBlocksList$1(bmp, tagBlock);
-
-    // console.log('*** renderTagBlock ***')
-    // console.log(options)
     
-    console.log ( 'renderTagBlock name=%s attrs=%d nodes=%s', tagBlock.name, attrsBlocksList.length, nodesBlocksList.length);
+  //  console.log ( 'renderTagBlock name=%s attrs=%d nodes=%s', tagBlock.name, attrsBlocksList.length, nodesBlocksList.length)
 
-    console.log(tagBlock.sort);
+  //  console.log(tagBlock.sort)
 
     if (tagBlock.sort === BlockSorts.ELEMENT) {
       // opening tag
@@ -1188,16 +1196,22 @@
     }
   };
 
+  /**
+   * give a string representation of a VTree
+   * useful for debugging purpose
+   * 
+   * @param {Object} bmp
+   * @param {Object} tree
+   * @param {Ovject} options
+   * @returns {String}
+   */
   var render = function (bmp, tree, options) {
     var tagBlock = bmp.getBlockByUid(tree.uid);
     
     options.head = [];
     options.tail = [];
-    
     renderTagBlock (bmp, tagBlock, options);
-      
-    console.log(options);
-      
+       
     return options.head.join('\n') + '\n' + options.tail.join('\n')
   };
 
@@ -1253,8 +1267,9 @@
   var TodoItem = function (props) {
     return domulo.h('li', { className: 'todo-item' },
       domulo.h('p', {}, 
-        domulo.h('span', {}, props.title),
-        domulo.h('span', {}, props.done)
+        'tile: ',  domulo.h('span', {}, props.title),
+        ' ',
+        'status: ', domulo.h('span', {}, props.done)
       )
     )
   };

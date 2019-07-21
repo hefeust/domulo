@@ -86,6 +86,16 @@ const patchDOM = (root, infos, options) => {
   
 }
 
+/**
+ * the patching algorithm
+ * 
+ * given a list of deltas, patches the real DOM
+ * 
+ * @param {Object} bmp
+ * @param {Object} deltas
+ * @param {Object} options
+ * @returns {undefined}
+ */
 export const patch = (bmp, deltas, options) => {
   const root = deltas.container
   

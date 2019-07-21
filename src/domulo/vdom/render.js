@@ -1,9 +1,17 @@
 
-
 import { BlockSorts } from '@/src/domulo/vdom/data-blocks'
 
+// list of orphaned (standalone) HTML tags
 const ORPHANED_TAGS = 'br,hr,img,input'.split(',')
 
+/**
+ * get the attrs blocks list
+ * for a given tag block in Blocck Memory Pool
+ * 
+ * @param {Object} bmp
+ * @param {Ovject} block
+ * @returns {Array|getAttrsBlocksList.list}
+ */
 const getAttrsBlocksList = (bmp, block) => {
   const list = []
   let attrBlock = null
@@ -23,16 +31,11 @@ const getNodesBlocksList = (bmp, block) => {
   const list = []
   let nodeBlock = null
   let nodeBlockUID = block.nodes 
-  
-///  console.log ("-----")
-//  console.log (bmp)
-//  console.log ("-----")
 
-  console.log ('* getNodesBlocksList * ')
+  //console.log ('* getNodesBlocksList * ')
     
   while (nodeBlockUID !== '0') {
     nodeBlock = bmp.getBlockByUid(nodeBlockUID)
-    console.log('node: name=%s sort=%s', nodeBlock.name, nodeBlock.sort)
     list.push (nodeBlock)
     nodeBlockUID = nodeBlock.next
   }
@@ -43,9 +46,6 @@ const getNodesBlocksList = (bmp, block) => {
 
 
 const renderOpeningTag = (bmp, tagBlock, attrsBlocks, options) => {
-//  console.log('*** renderOpeningTag ***')
-//  console.log(options)
-  
   let text = `${tagBlock.name}`
   let attrsText = attrsBlocks.reduce((acc, ab) => acc + ' ' + ab.name + '=' + '"' + ab.value + '"', '')
   
@@ -104,13 +104,10 @@ const renderTextBlock = (bmp, textBlock, options) => {
 const renderTagBlock = (bmp, tagBlock, options) => {
   const attrsBlocksList = getAttrsBlocksList(bmp, tagBlock)
   const nodesBlocksList = getNodesBlocksList(bmp, tagBlock)
-
-  // console.log('*** renderTagBlock ***')
-  // console.log(options)
   
-  console.log ( 'renderTagBlock name=%s attrs=%d nodes=%s', tagBlock.name, attrsBlocksList.length, nodesBlocksList.length)
+//  console.log ( 'renderTagBlock name=%s attrs=%d nodes=%s', tagBlock.name, attrsBlocksList.length, nodesBlocksList.length)
 
-  console.log(tagBlock.sort)
+//  console.log(tagBlock.sort)
 
   if (tagBlock.sort === BlockSorts.ELEMENT) {
     // opening tag
@@ -129,16 +126,22 @@ const renderTagBlock = (bmp, tagBlock, options) => {
   }
 }
 
+/**
+ * give a string representation of a VTree
+ * useful for debugging purpose
+ * 
+ * @param {Object} bmp
+ * @param {Object} tree
+ * @param {Ovject} options
+ * @returns {String}
+ */
 export const render = (bmp, tree, options) => {
   const tagBlock = bmp.getBlockByUid(tree.uid)
   
   options.head = []
   options.tail = []
-  
   renderTagBlock (bmp, tagBlock, options)
-    
-  console.log(options)
-    
+     
   return options.head.join('\n') + '\n' + options.tail.join('\n')
 }
 
