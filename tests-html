@@ -1,0 +1,12 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Domulo test uite</title>
+  </head>
+  <body>
+    <section>
+      <iframe id="left-side" src="src/pages/left.html" ></iframe>
+      <iframe id="right-side" src="src/pages/right.html"></iframe>
+    </section>
+  </body>
+</html>

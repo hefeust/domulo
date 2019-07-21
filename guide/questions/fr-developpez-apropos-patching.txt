@@ -1,0 +1,61 @@
+
+Bonjour,
+
+je travaille actuellement sur une lib JS de gestion de DOM virtuel. Le code est sotcké sur le dépôt: https://github.com/hefeust/domulo.git
+
+Le nom "domulo" provient du fait que la lib utilise en interne un générateur pseudo aléatoire modulaire (MWC = Multiply-With-Carry) pour attribuer des clés uniques à des blocs de mémoire et constituer ainsi un Block Memory Pool (BMP) dans lequel les arbres VDOM successifs, ainsi que les patches sont linéarisés.
+
+Objectifs :
+
+- requêter et filtrer rapidemùent sur le VDOM (exemple changer style: { color: "blue" } enstyle: { color: "red" } pour tous les noeuds à la volée) ;
+- permettre de streamer des VDOM et des patches envue peut être d'un rendu côté serveur ;
+- éviter lezs cycles intempestifs du rammasse miettes de JS, en ne libérant pas directement la mémoire, mais en marquant les blocs inutilisés comme libres ;
+- permettre l'application/annulation des patches et leur historisation (time travelling possible)
+- et enfin, en utilisant les closures JS, des clés pseudo aléatoires pour identifier et chaîner les blocs mémoire, assurrer une forme d'encapsulation et d'incorruptibilité (sécurité) de la structure de données
+
+Ce qui est déjà fait :
+
+- la fonction hyperscript qui projette ses résultats dans le Block Memort Pool
+-le montage et le rendu text/html d'un arbre VDOM stocké dans le BMP
+- le mécanisme basique de diff 
+
+Ce qui reste à terminer:
+- la gestion fine des attributs className et style
+- la gestion des event listeners
+- le gros morceau: le patching
+- le mécanisme de rollback des patches (time travelling)
+
+Pour ce qui est du diff, chaque delta du patch préparé conserve: 
+
+- le nom de l'opération (exemple: PATCH_INSERT_NODE)
+- un lien vers le bloc dans l'arbre source
+-  un lien vers le bloc dans l'arbre destination
+- le chemin de patch source|destination
+
+Les chemins de patch sont de la forme :
+
+[CODE]
+    chemin/depuis/racine/source!chemin/vers/destination
+    
+    0!0/1/2: arbre de départ vide, 0/1/2-ème noeud en destination
+    0/1/2!0: arbre de destination vide
+    
+    # plus compliqué, mais à clarifier sans aucun doute...
+    0/1!0/2: couper la deuximème branche de l'arbre source et coller dans le nouvel arbre
+[/CODE]
+
+Le diff est OK pour le moment, et produit bien des patches (séquences de deltas) pour le patching c'est une autre histoire...
+
+- soit j'ai une boucle infinie qui empile le premier noeud ad vitam eternam p/p/p...
+- soit tous les noeuds sont listés et entassés les uns derrières les autre sous la racine sans tenir compte de l'imbrication !
+
+Le hic vient du fait que patcher un DOM, c'est un peui mùarcher sur des sables mouvants, ou scier la branche sur laquelle on est assis : faut il se repérer par rapport à l'ancien arbre ou par rapport au nouveau qu'on construit ?
+
+Par exemple si root est le noeud localement visité, root.childNodes listera tous les enfants effectifs, mais comme savoir lequel et où ajouter le nouveau ?
+
+La seule certitude qu'on ait, c'est que chauqe delta étant une transformation infinitésimale (comme en thermodynamique), est que l'arbre destination réel est PRESQUE LE MEME entre chauqe application de delta !
+
+Voilà pour le moment, j'espère que vous avez tenu jusque là, et fait bonne lecture. J(aimerai avoir quelques conseils et remarques, surtout ne vous en privez pas.
+
+Merci d'avance, Salut, A + F - E !
+

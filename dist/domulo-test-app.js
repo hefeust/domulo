@@ -943,151 +943,112 @@
     }
   };
 
-  var insertNode = function (element, newly, oldNode) {
-    console.log('insertNode', element, oldNode);
-    var newNode = document.createElement (newly.name);
-    element.appendChild (newNode);
+  var insertNode = function (root, infos) {
+    var newNode = document.createElement (infos.newlyBlock.name);
+    
+    root.appendChild (newNode);
   };
 
-  var updateNode = function (element, newly, oldNode) {
-    console.log('insertNode', element, oldNode);
-    var newNode = document.createElement (newly.name);
-    element.replaceChild (newNode, oldNode);
-  };
-
-  var deleteNode = function () {};
-
-  var insertText = function (element, newlyBlock, oldNode) {
-    console.log('insertText', element, oldNode);
-    var newNode = document.createTextNode (newlyBlock.value);
-    element.appendChild (newNode);  
-  };
-
-  var updateText = function () {};
-  var deleteText = function () {};
-
-  var insertAttr = function () {};
-  var updateAttr = function () {};
-  var deleteAttr = function () {};
-
-  var PATCH_OPS = {};
-
-  PATCH_OPS [ BlockSorts.PATCH_INSERT_NODE ] = insertNode;
-  PATCH_OPS [ BlockSorts.PATCH_INSERT_TEXT ] = insertText;
-  PATCH_OPS [ BlockSorts.PATCH_INSERT_ATTR ] = insertAttr;
-
-  PATCH_OPS [ BlockSorts.PATCH_UPDATE_NODE ] = updateNode;
-  PATCH_OPS [ BlockSorts.PATCH_UPDATE_TEXT ] = updateText;
-  PATCH_OPS [ BlockSorts.PATCH_UPDATE_ATTR ] = updateAttr;
-
-  PATCH_OPS [ BlockSorts.PATCH_DELETE_NODE ] = deleteNode;
-  PATCH_OPS [ BlockSorts.PATCH_DELETE_TEXT ] = deleteText;
-  PATCH_OPS [ BlockSorts.PATCH_DLEETE_ATTR ] = deleteAttr;
-
-
-
-  var patchTag = function (bmp, root, delta, visiting, options) {
-    var used = false;
-    console.log ('*** patch DOM root TAG ***');
+  var insertText = function (root, infos) {
+    var newNode = document.createTextNode (infos.newlyBlock.value);
     
-    var visited = [visiting.oldie.join('/'), visiting.newly.join('/')].join('!');
-    var oldNode = null;
-    var newlyBlock = bmp.getBlockByUid (delta.newly);
-    
-    if (delta.route = visited) {
-      used = true;
-      PATCH_OPS [ delta.sort] (root, newlyBlock, oldNode);
-    }
-    
-    return used
+    root.appendChild (newNode);
   };
 
 
-  var patchAttrs = function (bmp,root, delta, visiting, options) {
-    console.log ('*** patch DOM attributes ***');
-    return false
-  };
+  var discoverNodes = function (root, infos) {
+    var oldieRoute = infos.oldieRoute;
+    var newlyRoute = infos.newlyRoute;
+    var oldieDelta = infos.oldieDelta;
+    var newlyDelta = infos.newlyDelta;
+    var progress = Object.assign ({}, infos);
+    var level = 0;
+    var currentNode = root;
+    var oldieNode = null;
+    var newlyNode = null;
+    var children = null;
 
-
-  var patchNodes = function (bmp, root, delta, visiting, options) {
-    console.log ('*** patch DOM nodes ***');
-    
-    var children = root.childNodes;
-    
-    var used = false;
-    
-    if (visiting.level > 20) { throw new Error ('#RECURSION!') }
-    
-    for (var idx = 0; idx < children.length; idx++) {
-      var discovery = {};
-      var child = children [idx];
+    while (level < newlyDelta.length) {
+      console.log ('while', level, currentNode);
       
-      discovery.oldie = visiting.oldie.slice(0);
-      discovery.newly = visiting.newly.slice(0);
+      children = currentNode.childNodes;
       
-      if(delta.oldie) {
-        discovery.oldie.push (idx);  
+      if (newlyDelta[level] < children.length ) {
+        currentNode = children [newlyDelta[ level ]];
+        
       } else {
-        discovery.oldie [discovery.oldie.length - 1]++;
+        console.log ('ALERT');
+        break
       }
-
-      if(delta.newly) {
-        discovery.newly.push (idx);  
-      } else {
-        discovery.newly [discovery.newly.length - 1]++;
-      }    
       
-      discovery.level = visiting.level + 1;
-      discovery.rank = idx;
-      
-      console.log ('=========================');
-      
-      used = patchDOM (bmp, child, delta, discovery, options);
-      
-      if (used) { break }
+      level++;
     }
     
-    return used
+    console.log('--> discoverNodes', root);
+    console.log ('newlyDelta: ' + newlyDelta.join(' ')); 
+    // console.log ('newlyRoute: ' + newlyRoute.join(' '))
+    console.log ('currentNde', currentNode);
+    
+    return { root: currentNode, oldieNode: oldieNode, newlyNode: newlyNode}
   };
 
-  var patchDOM = function (bmp, root, delta, visiting, options) {
-    var used = false;
+  var patchDOM = function (root, infos, options) {
+    console.log ('### patch real DOM ###');
     
-    console.log ('=== patch DOM recursively ===');
-    console.log ('root', root);
+    var discovery = discoverNodes (root, infos);
+   
+    console.log('patchDOM after discovery', discovery);
+   
+    root = discovery.root;
+    infos.newlyNode = discovery.newlyNode;
+    infos.oldieNode = discovery.oldieNode;
     
-    used = patchTag (bmp, root, delta, visiting, options);  
-    used = used && patchAttrs (bmp, root, delta, visiting, options);  
-    used = used && patchNodes (bmp, root, delta, visiting, options);  
+    switch (infos.ops) {
+      case BlockSorts.PATCH_INSERT_NODE: 
+        insertNode (root, infos);
+      break
+
+      case BlockSorts.PATCH_INSERT_TEXT: 
+        insertText (root, infos);
+      break    
+    }
     
-    return used
   };
 
   var patch = function (bmp, deltas, options) {
-    
     var root = deltas.container;
-    var delta = bmp.getBlockByUid (deltas.uid);
-    var deltaBlockUid = delta.next;
+    
+    var deltaPreludeBlock = bmp.getBlockByUid (deltas.uid);
+    var deltaBlockUid = deltaPreludeBlock.next;  
     var rank = 0;
+    
+    console.log ('===== patching real DOM... =====');
     
     while (deltaBlockUid !== '0') {
       var deltaBlock = bmp.getBlockByUid (deltaBlockUid);
-      var visitingInfos = { 
+      var parts = deltaBlock.route.split ('!');
+      var oldieDelta = parts[0].split ('/').map(function (s) { return parseInt(s); });
+      var newlyDelta = parts[1].split ('/').map(function (s) { return parseInt(s); });
+
+      var infos = {
+        ops: deltaBlock.sort,
+        oldieDelta: oldieDelta,
+        oldieRoute: [0],
+        oldieBlock: deltaBlock.oldie && bmp.getBlockByUid (deltaBlock.oldie),
+        newlyDelta: newlyDelta,
+        newlyRoute: [0],
+        newlyBlock: deltaBlock.newly &&   bmp.getBlockByUid (deltaBlock.newly),
         level: 0,
-        rank: 0,
-        oldie: [0], 
-        newly: [0] 
+        chidx: 0,
       };
-      
-      patchDOM (bmp, root, deltaBlock, visitingInfos, options);
+    
+      console.log('patch #' + rank);
+      // console.log (infos)
+    
+      patchDOM (root, infos, options);
+    
       deltaBlockUid = deltaBlock.next;
       rank++;
-
-      console.log('PATCH #' + rank);
-      console.log(deltaBlock);
-      console.log(visitingInfos);
-      console.log(rank);
-
     }
   };
 
@@ -1287,7 +1248,35 @@
 
   var domulo = wrap({ key: 'peaceful '});
 
-  // const tree = TodoList (props)
+  var TodoItem = function (props) {
+    return domulo.h('li', { className: 'todo-item' },
+      domulo.h('p', {}, 
+        domulo.h('span', {}, props.title),
+        domulo.h('span', {}, props.done)
+      )
+    )
+  };
+
+  var TodoList = function (props) {
+    return domulo.h('section', { className: 'todo-list'},
+      domulo.h('h1', {}, 'Todo List items'),
+      domulo.h('ul', {}, 
+        props.todos.map(function (todo) { return TodoItem(todo); })
+      )
+    )
+  };
+
+  var props = {
+    todos:  [
+      { title: 'todo-1', priority: 1, done: false },
+      { title: 'todo-2', priority: 5, done: false },
+      { title: 'todo-3', priority: 4, done: true },
+      { title: 'todo-4', priority: 2, done: false },
+      { title: 'todo-5', priority: 3, done: true }
+    ]
+  };
+
+  var tree = TodoList (props);
 
   /*
   const tree = domulo.h ('div', {}, 
@@ -1301,7 +1290,7 @@
   )
   */
 
-  var tree = domulo.h('ul', {}, 
+  var tree1 = domulo.h('ul', {}, 
     domulo.h('li', {}, 'item-1'),
     domulo.h('li', {}, 'item-2'),
     domulo.h('li', {}, 'item-3')

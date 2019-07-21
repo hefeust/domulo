@@ -1,151 +1,124 @@
 
 import { BlockSorts } from '@/src/domulo/vdom/data-blocks'
 
-const insertNode = (element, newly, oldNode) => {
-  console.log('insertNode', element, oldNode)
-  const newNode = document.createElement (newly.name)
-  element.appendChild (newNode)
+const insertNode = (root, infos) => {
+  const newNode = document.createElement (infos.newlyBlock.name)
+  
+  root.appendChild (newNode)
 }
 
-const updateNode = (element, newly, oldNode) => {
-  console.log('insertNode', element, oldNode)
-  const newNode = document.createElement (newly.name)
-  element.replaceChild (newNode, oldNode)
+const updateNode = (root, infos) => {
+  
 }
 
-const deleteNode = () => {}
-
-const insertText = (element, newlyBlock, oldNode) => {
-  console.log('insertText', element, oldNode)
-  const newNode = document.createTextNode (newlyBlock.value)
-  element.appendChild (newNode)  
+const deleteNode = (root, infos) => {
+  
 }
 
-const updateText = () => {}
-const deleteText = () => {}
-
-const insertAttr = () => {}
-const updateAttr = () => {}
-const deleteAttr = () => {}
-
-const PATCH_OPS = {}
-
-PATCH_OPS [ BlockSorts.PATCH_INSERT_NODE ] = insertNode
-PATCH_OPS [ BlockSorts.PATCH_INSERT_TEXT ] = insertText
-PATCH_OPS [ BlockSorts.PATCH_INSERT_ATTR ] = insertAttr
-
-PATCH_OPS [ BlockSorts.PATCH_UPDATE_NODE ] = updateNode
-PATCH_OPS [ BlockSorts.PATCH_UPDATE_TEXT ] = updateText
-PATCH_OPS [ BlockSorts.PATCH_UPDATE_ATTR ] = updateAttr
-
-PATCH_OPS [ BlockSorts.PATCH_DELETE_NODE ] = deleteNode
-PATCH_OPS [ BlockSorts.PATCH_DELETE_TEXT ] = deleteText
-PATCH_OPS [ BlockSorts.PATCH_DLEETE_ATTR ] = deleteAttr
-
-
-
-const patchTag = (bmp, root, delta, visiting, options) => {
-  let used = false
-  console.log ('*** patch DOM root TAG ***')
+const insertText = (root, infos) => {
+  const newNode = document.createTextNode (infos.newlyBlock.value)
   
-  const visited = [visiting.oldie.join('/'), visiting.newly.join('/')].join('!')
-  const oldNode = null
-  const newlyBlock = bmp.getBlockByUid (delta.newly)
+  root.appendChild (newNode)
+}
+
+const updateText = (root, infos) => {
   
-  if (delta.route = visited) {
-    used = true
-    PATCH_OPS [ delta.sort] (root, newlyBlock, oldNode)
-  }
+}
+
+const deleteText = (root, infos) => {
   
-  return used
 }
 
 
-const patchAttrs = (bmp,root, delta, visiting, options) => {
-  console.log ('*** patch DOM attributes ***')
-  return false
-}
+const discoverNodes = (root, infos) => {
+  const { oldieRoute, newlyRoute, oldieDelta, newlyDelta } = infos
+  const progress = Object.assign ({}, infos)
+  let level = 0
+  let currentNode = root
+  let oldieNode = null
+  let newlyNode = null
+  let children = null
 
-
-const patchNodes = (bmp, root, delta, visiting, options) => {
-  console.log ('*** patch DOM nodes ***')
-  
-  const children = root.childNodes
-  
-  let used = false
-  
-  if (visiting.level > 20) throw new Error ('#RECURSION!')
-  
-  for (let idx = 0; idx < children.length; idx++) {
-    const discovery = {}
-    const child = children [idx]
+  while (level < newlyDelta.length) {
+    console.log ('while', level, currentNode)
     
-    discovery.oldie = visiting.oldie.slice(0)
-    discovery.newly = visiting.newly.slice(0)
+    children = currentNode.childNodes
     
-    if(delta.oldie) {
-      discovery.oldie.push (idx)  
+    if (newlyDelta[level] < children.length ) {
+      currentNode = children [newlyDelta[ level ]]
+      
     } else {
-      discovery.oldie [discovery.oldie.length - 1]++
+      console.log ('ALERT')
+      break
     }
-
-    if(delta.newly) {
-      discovery.newly.push (idx)  
-    } else {
-      discovery.newly [discovery.newly.length - 1]++
-    }    
     
-    discovery.level = visiting.level + 1
-    discovery.rank = idx
-    
-    console.log ('=========================')
-    
-    used = patchDOM (bmp, child, delta, discovery, options)
-    
-    if (used) break
+    level++
   }
   
-  return used
+  console.log('--> discoverNodes', root)
+  console.log ('newlyDelta: ' + newlyDelta.join(' ')) 
+  // console.log ('newlyRoute: ' + newlyRoute.join(' '))
+  console.log ('currentNde', currentNode)
+  
+  return { root: currentNode, oldieNode, newlyNode}
 }
 
-const patchDOM = (bmp, root, delta, visiting, options) => {
-  let used = false
+const patchDOM = (root, infos, options) => {
+  console.log ('### patch real DOM ###')
   
-  console.log ('=== patch DOM recursively ===')
-  console.log ('root', root)
+  const discovery = discoverNodes (root, infos)
+ 
+  console.log('patchDOM after discovery', discovery)
+ 
+  root = discovery.root
+  infos.newlyNode = discovery.newlyNode
+  infos.oldieNode = discovery.oldieNode
   
-  used = patchTag (bmp, root, delta, visiting, options)  
-  used = used && patchAttrs (bmp, root, delta, visiting, options)  
-  used = used && patchNodes (bmp, root, delta, visiting, options)  
+  switch (infos.ops) {
+    case BlockSorts.PATCH_INSERT_NODE: 
+      insertNode (root, infos)
+    break
+
+    case BlockSorts.PATCH_INSERT_TEXT: 
+      insertText (root, infos)
+    break    
+  }
   
-  return used
 }
 
 export const patch = (bmp, deltas, options) => {
-  
   const root = deltas.container
-  let delta = bmp.getBlockByUid (deltas.uid)
-  let deltaBlockUid = delta.next
+  
+  const deltaPreludeBlock = bmp.getBlockByUid (deltas.uid)
+  let deltaBlockUid = deltaPreludeBlock.next  
   let rank = 0
+  
+  console.log ('===== patching real DOM... =====')
   
   while (deltaBlockUid !== '0') {
     const deltaBlock = bmp.getBlockByUid (deltaBlockUid)
-    const visitingInfos = { 
+    const parts = deltaBlock.route.split ('!')
+    const oldieDelta = parts[0].split ('/').map(s => parseInt(s))
+    const newlyDelta = parts[1].split ('/').map(s => parseInt(s))
+
+    const infos = {
+      ops: deltaBlock.sort,
+      oldieDelta,
+      oldieRoute: [0],
+      oldieBlock: deltaBlock.oldie && bmp.getBlockByUid (deltaBlock.oldie),
+      newlyDelta,
+      newlyRoute: [0],
+      newlyBlock: deltaBlock.newly &&   bmp.getBlockByUid (deltaBlock.newly),
       level: 0,
-      rank: 0,
-      oldie: [0], 
-      newly: [0] 
+      chidx: 0,
     }
-    
-    patchDOM (bmp, root, deltaBlock, visitingInfos, options)
+  
+    console.log('patch #' + rank)
+    // console.log (infos)
+  
+    patchDOM (root, infos, options)
+  
     deltaBlockUid = deltaBlock.next
     rank++
-
-    console.log('PATCH #' + rank)
-    console.log(deltaBlock)
-    console.log(visitingInfos)
-    console.log(rank)
-
   }
 }
-
