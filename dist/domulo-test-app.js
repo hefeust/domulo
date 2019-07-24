@@ -126,7 +126,7 @@
     'PATCH_DELETE_NODE': 'PDN',
     'PATCH_INSERT_TEXT': 'PIT',
     'PATCH_UPDATE_TEXT': 'PUT',
-    'PATCH_DELETE_TEXTR': 'PDT',
+    'PATCH_DELETE_TEXT': 'PDT',
     'PATCH_INSERT_ATTR': 'PIA',
     'PATCH_UPDATE_ATTR': 'PUA',
     'PATCH_DELETE_ATTR': 'PDA'
@@ -529,6 +529,16 @@
     return { uid: root.uid }
   };
 
+  var empty = function (bmp) {
+    // const emptyBlock = bmp.getEmptyBlock()
+    
+    // emptyBlock.sort = 'VTREE('
+    
+    return {
+      uid: '0'
+    }
+  };
+
   /**
    * the patch types 
    * @type ENUM
@@ -574,14 +584,23 @@
     // console.log('######### createPatchBlock')
     // console.log (params)
     
-    newPatchBlock.sort = params.sort || '#/a!';
-    newPatchBlock.rel = params.rel || '#/a!';
+    newPatchBlock.sort = params.sort || '#void!';
+    // newPatchBlock.rel = params.rel || '#/a!'
 
     // patching route
-    newPatchBlock.route = params.route && params.route.oldie.join('/') + '!' + params.route.newly.join('/');
+    // newPatchBlock.route = params.route && params.route.oldie.join('/') + '!' + params.route.newly.join('/')
+
+    newPatchBlock.route = params.route && [params.route.oldie.join('/'), params.route.newly.join('/')].join('!');
 
     newPatchBlock.oldie = params.oldie;
     newPatchBlock.newly = params.newly;
+
+    if (newPatchBlock.sort === '#void!') {
+      console.log (params);
+      // console.log('oldie', oldie)
+      //console.log('newly', newly)
+      throw new Error ()
+    }
 
     patch.patchBlock.next = newPatchBlock.uid;
     patch.patchBlock = newPatchBlock;
@@ -655,10 +674,11 @@
    */
   var diffTagsBlocks = function (bmp, oldTagBlock, newTagBlock, route, patch) {
     var bds = blocksDiffSort (oldTagBlock, newTagBlock);
+    // let sort = BlockSorts.EMPTY
 
-    console.log('    diff tag blocks: ' + bds);
-    console.log ( oldTagBlock.name + ' ' + newTagBlock.name);
-    
+    // console.log('    diff tag blocks: ' + bds)
+    // console.log ( oldTagBlock.name + ' ' + newTagBlock.name)
+    try {
     switch (bds) {
       
       case DIFF_TYPES.TAG_TO_TAG:
@@ -692,9 +712,9 @@
       case DIFF_TYPES.TEXT_TO_TAG:   
         createPatchBlock (bmp, patch, {
           sort: BlockSorts.PATCH_DELETE_TEXT,
-            oldie: oldTagBlock.uid,
-            newly: null,
-            route: route
+          oldie: oldTagBlock.uid,
+          newly: null,
+          route: route
         });
         
         createPatchBlock (bmp, patch, {
@@ -710,7 +730,7 @@
         if (oldTagBlock.value === newTagBlock.value) { return } 
         
         createPatchBlock (bmp, patch, {
-          sort:BlockSorts.PATCH_UPDATE_TEXT,
+          sort:  BlockSorts.PATCH_UPDATE_TEXT,
           oldie: oldTagBlock.uid,
           newly: newTagBlock.uid,
           route: route
@@ -745,8 +765,6 @@
       break 
       
       case DIFF_TYPES.EMPTY_TO_TAG: 
-        console.log('==========================');
-        
         createPatchBlock (bmp, patch, {
           sort: BlockSorts.PATCH_INSERT_NODE,
           oldie: null,
@@ -757,8 +775,14 @@
       
       case DIFF_TYPES.EMPTY_TO_EMPTY: 
         // do nothing ...
-        return    
       break 
+    }
+    
+    } catch (error)  {
+      console.log (bds);
+      console.log ('oldTagBlock', oldTagBlock);
+      console.log ('newTagBlock', newTagBlock);
+      throw error
     }
   };
 
@@ -845,32 +869,26 @@
     var olen = oldNodesList.length;
     var nlen = newNodesList.length;
     
-    console.log('BEFORE ZIP : %s %s', olen, nlen );
-    
     zip (oldNodesList, newNodesList).map(function (entry, idx) {
-      console.log('zip ' + idx + ' ############################');
+       var oldie = route.oldie.slice (0);
+       var newly = route.newly.slice (0);
+       var diffRoute = { oldie: oldie, newly: newly };
       
-  //    console.log (route.oldie)
-  //    console.log (route.newly)
+       if (olen > nlen) {
+         if (idx < nlen) {
+           newly.push (idx);
+         } else {
+           oldie.push (idx - nlen);
+         }
+       } else {
+         if (idx < olen) {
+           oldie.push (idx);
+         } else {
+           newly.push (idx - olen);
+         }       
+       }
       
-      //if (idx === 4) throw new Error('ERROR')
-      
-      if (nlen > olen) {
-        route.newly.push(idx);
-      } else {
-        route.oldie.push(idx);
-      }
-      
-      
-      diffTrees (bmp, entry[0], entry[1], route, patch);
-
-      //if (idx === 4) throw new Error('ERROR')
-
-      if (nlen > olen) {
-        route.newly.pop ();
-      } else {
-        route.oldie.pop ();
-      }
+      diffTrees (bmp, entry[0], entry[1], diffRoute, patch);
     });
   };
 
@@ -878,44 +896,21 @@
     var oldTreeBlock;
     var newTreeBlock;
 
-    if (oldTree && newTree) {
-      // both new old and new tree exist
-      console.log ('### diff existing trees ###');
-      
-      oldTreeBlock = bmp.getBlockByUid (oldTree.uid);
-      newTreeBlock = bmp.getBlockByUid (newTree.uid);
-      
-      newTree.container = oldTree.container;
-      
-    } else if (oldTree) {
-      // tree removal
-      console.log ('### tree removal ###');
+    console.log ('===== diffTrees =====');
+    console.log (oldTree);
+    console.log (newTree);
 
-      oldTreeBlock = bmp.getBlockByUid (oldTree.uid);
-      newTreeBlock = bmp.getEmptyBlock ();
-      
-      
-    } else if (newTree) {
-      // tree creation
-      console.log ('###  tree creation ###');
-    
-      oldTreeBlock = bmp.getEmptyBlock ();
-      newTreeBlock = bmp.getBlockByUid (newTree.uid);
-    
-    
+    if (oldTree && oldTree.uid !== '0') {
+      oldTreeBlock = bmp.getBlockByUid (oldTree.uid);    
     } else {
-      // otherwise,j do nothing
-      console.log ('### diff empty trees ###');
-
       oldTreeBlock = bmp.getEmptyBlock ();
-      newTreeBlock = bmp.getEmptyBlock ();
-   
     }
 
-
-    // diffTagsBlocks (bmp, oldTreeBlock, newTreeBlock, patch)
-    // diffAttrsBlocks (bmp, oldTreeBlock, newTreeBlock, patch)
-    //diffNodesBlocks (bmp, oldTreeBlock, newTreeBlock, patch)
+    if (newTree && newTree.uid !== '0') {
+      newTreeBlock = bmp.getBlockByUid (newTree.uid);    
+    } else {
+      newTreeBlock = bmp.getEmptyBlock ();
+    }
 
     diffTagsBlocks (bmp, oldTreeBlock, newTreeBlock, route, patch);
     diffAttrsBlocks (bmp, oldTreeBlock, newTreeBlock, route, patch);
@@ -930,7 +925,7 @@
     };
     
     patchBlock.sort = BlockSorts.PATCH;
-  //  patchBlock.rel = [oldTree && oldTree.uid, newTree && newTree.uid]
+    newTree.container = oldTree.container;
     
     //diffTrees (bmp, oldTree, newTree, route, patch)
     diffTrees (bmp, oldTree, newTree, route, patch);
@@ -938,8 +933,9 @@
     return { 
       name: 'PATCH',
       uid: patchBlock.uid,
-      oldie: newTree.uid,
-      newly: newTree.uid
+      oldie: oldTree && oldTree.uid,
+      newly: newTree && newTree.uid,
+      container: oldTree.container
     }
   };
 
@@ -949,55 +945,96 @@
     root.appendChild (newNode);
   };
 
+  var deleteNode = function (root, infos) {
+    console.log ('delete node');
+    console.log (root);
+    console.log (infos.oldieNode  );
+
+    //const chidx = infos.oldieDelta [ infos.oldieDelta.length - 1 ]
+    //const oldNode = root.childNodes [ chidx ]
+    var oldieNode = infos.oldieNode;
+    
+    root.removeChild (oldieNode);  
+  };
+
   var insertText = function (root, infos) {
     var newNode = document.createTextNode (infos.newlyBlock.value);
     
     root.appendChild (newNode);
   };
 
+  var deleteText = function (root, infos) {
+    console.log ('delete node');
+    console.log (root);
+    console.log (infos);
+
+    //const chidx = infos.oldieDelta [ infos.oldieDelta.length - 1 ]
+    //const oldNode = root.childNodes [ chidx ]
+    var oldieNode = infos.oldieNode;
+    
+    root.removeChild (oldieNode);  
+  };
+
+  var setAttr = function (root, infos) {
+    var name = infos.newlyBlock.name;
+    var value = infos.newlyBlock.value;
+
+    if (name === 'className') {
+      root.setAttribute ('class', value);
+    } else {
+      root.setAttribute (name, value);
+    }
+  };
 
   var discoverNodes = function (root, infos) {
-    var oldieRoute = infos.oldieRoute;
-    var newlyRoute = infos.newlyRoute;
     var oldieDelta = infos.oldieDelta;
-    var newlyDelta = infos.newlyDelta;
-    var progress = Object.assign ({}, infos);
-    var level = 0;
-    var currentNode = root;
-    var oldieNode = null;
-    var newlyNode = null;
-    var children = null;
-
-    while (level < newlyDelta.length) {
-      console.log ('while', level, currentNode);
+    var newlyDelta = infos.newlyDelta;  
+    
+    var iterate = function (route, nav, shift) {
+      console.log ('iterate route:'  + route.join('/'));
+      var children = null;
+      var level = shift;
       
-      children = currentNode.childNodes;
-      
-      if (newlyDelta[level] < children.length ) {
-        currentNode = children [newlyDelta[ level ]];
+      if (shift === 1) {
+        nav.oldieNode = nav.root;
+        nav.root = nav.root.parentNode;
         
-      } else {
-        console.log ('ALERT');
-        break
+        return 
       }
       
-      level++;
+      while (level + shift < route.length) {
+        children = nav.root.childNodes;
+        
+        if (route [level] < children.length) {
+          nav.root = children [ route [level] ];
+          nav.oldieNode = nav.root.childNodes [ route [level + 1 ] ];
+        }
+        
+        level++;
+      }
+    };
+    
+    var shift = 0;
+    var nav = { root: root, oldieNode: null };
+    
+    if (oldieDelta.length > 1) {
+      iterate (oldieDelta, nav, shift);
+      shift = 1;
+    } else {
+      shift = 0;
     }
     
-    console.log('--> discoverNodes', root);
-    console.log ('newlyDelta: ' + newlyDelta.join(' ')); 
-    // console.log ('newlyRoute: ' + newlyRoute.join(' '))
-    console.log ('currentNde', currentNode);
-    
-    return { root: currentNode, oldieNode: oldieNode, newlyNode: newlyNode}
+    iterate (newlyDelta, nav, shift);
+
+    console.log ('discoverNopdes results with (root, oldieNode)', nav.root, nav.oldieNode);
+
+    return nav
   };
 
   var patchDOM = function (root, infos, options) {
     console.log ('### patch real DOM ###');
     
     var discovery = discoverNodes (root, infos);
-   
-    console.log('patchDOM after discovery', discovery);
    
     root = discovery.root;
     infos.newlyNode = discovery.newlyNode;
@@ -1010,9 +1047,167 @@
 
       case BlockSorts.PATCH_INSERT_TEXT: 
         insertText (root, infos);
-      break    
+      break
+
+      case BlockSorts.PATCH_INSERT_ATTR: 
+        setAttr (root, infos);
+      break  
+
+      case BlockSorts.PATCH_UPDATE_NODE: 
+      break
+
+      case BlockSorts.PATCH_UPDATE_TEXT: 
+      break
+
+      case BlockSorts.PATCH_UPDATE_ATTR: 
+        setAttr (root, infos);
+      break  
+    
+      case BlockSorts.PATCH_DELETE_NODE: 
+        deleteNode (root, infos);
+      break
+
+      case BlockSorts.PATCH_DELETE_TEXT: 
+        deleteText (root, infos);
+      break
+
+      case BlockSorts.PATCH_DELETE_ATTR: 
+      break  
     }
     
+  };
+
+  var collectDeltaInfos = function (bmp, deltaRootBlock) {
+    var deltas = [];
+    var deltaBlockUid =  deltaRootBlock.next; 
+    var rank = 0;
+    
+
+    while (deltaBlockUid !== '0') {
+      var deltaBlock = bmp.getBlockByUid (deltaBlockUid);
+
+      var parts = deltaBlock.route.split ('!');
+      var oldieDelta = parts[0].split ('/').map(function (s) { return parseInt(s); });
+      var newlyDelta = parts[1].split ('/').map(function (s) { return parseInt(s); });
+      
+      var infos = {
+        ops: deltaBlock.sort,
+        oldieDelta: oldieDelta,
+        oldieRoute: [0],
+        oldieBlock: deltaBlock.oldie && bmp.getBlockByUid (deltaBlock.oldie),
+        newlyDelta: newlyDelta,
+        newlyRoute: [0],
+        newlyBlock: deltaBlock.newly &&   bmp.getBlockByUid (deltaBlock.newly),
+        level: 0,
+        chidx: 0,
+        rank: rank
+      };
+
+      
+      deltas.push (infos);
+      rank++;
+      deltaBlockUid = deltaBlock.next;
+    }  
+
+
+    console.log('collectDeltasInfos', deltaRootBlock);
+    
+    
+    
+    var ds = ds = deltas.map(function (d) { return ((d.rank) + " " + (d.ops) + " oldie: " + (d.oldieDelta.join(',')) + "  newly: " + (d.newlyDelta.join(','))); }
+    );
+    
+    console.log (ds.join('\n'));
+      
+    
+    
+
+    return deltas   
+  };
+
+  var INS_OPS = [
+      BlockSorts.PATCH_INSERT_NODE,
+      BlockSorts.PATCH_INSERT_TEXT,
+      BlockSorts.PATCH_INSERT_ATTR ];
+
+
+  var DEL_OPS = [
+      BlockSorts.PATCH_DELETE_NODE,
+      BlockSorts.PATCH_DELETE_TEXT,
+      BlockSorts.PATCH_DELETE_ATTR ];
+
+  var sortDeltaBlocksList = function (dbl) {
+    
+    dbl.sort (function (a, b) {
+      var a_is_delete = DEL_OPS.indexOf(a.ops) > -1;
+      var b_is_delete = DEL_OPS.indexOf(b.ops) > -1;
+      
+      if (a_is_delete && b_is_delete) {
+        // both deletions: revert sorting order
+        if (a.rank < b.rank) {
+          return 1
+        } else if(a.rank > b.rank) {
+          return -1
+        } else {
+          return 0
+        }
+      } else if (a_is_delete) {
+        // only a deletes ? a is smaller
+        return -1
+      } else if (b_is_delete) {
+        // only b deletes ? b is lsmaller
+        return 1      
+      } else {
+        // NO DLETIONS AT ALL ? preserve order
+        if (a.rank < b.rank) {
+          return -1
+        } else if(a.rank > b.rank) {
+          return 1
+        } else {
+          return 0
+        }
+      }
+    });
+  };
+
+  var rebaseDeltasBlocksList = function (dbl, rank) {
+    
+    for (var s = 0; s < dbl.length; s++) {
+      var src = dbl [s];
+      var ops_is_delete = DEL_OPS.indexOf(dbl[s]) > -1;
+      var ops_is_insert = INS_OPS.indexOf(dbl[s]) > -1;
+
+      if (ops_is_delete) {
+        for (var t = s + 1; t < dbl.length; t++) {
+          var tgt = dbl [t];
+          var oldiePos = tgt.oldieDelta.length - 2;
+          var i = 0;
+          
+          while (src.oldieDelta[i] ===  tgt[t].oldieDelta[i]) {
+            if (i === oldiePos) { tgt.oldieDelta[i]--; }
+            if (i > src.oldieDelta.length) { break }
+            i++; 
+          }
+        }
+      }    
+
+      if (ops_is_insert) {
+        for (var t$1 = s + 1; t$1 < dbl.length; t$1++) {
+          var tgt$1 = dbl [t$1];
+          var newlyPos = tgt$1.newlyDelta.length -  2;
+                  
+          var i$1 = 0;
+          
+          while (src.newlyDelta[i$1] ===  tgt$1[t$1].newlyDelta[i$1]) {
+            if (i$1 === newlyPos) { tgt$1.newlyDelta[i$1]++; }
+            if (i$1 > src.newlyDelta.length) { break }
+            i$1++; 
+          }
+        }    
+      }
+
+    }
+
   };
 
   /**
@@ -1027,47 +1222,49 @@
    */
   var patch = function (bmp, deltas, options) {
     var root = deltas.container;
-    
-    var deltaPreludeBlock = bmp.getBlockByUid (deltas.uid);
-    var deltaBlockUid = deltaPreludeBlock.next;  
-    var rank = 0;
+    var deltasInfosList = collectDeltaInfos (bmp, bmp.getBlockByUid (deltas.uid));
     
     console.log ('===== patching real DOM... =====');
+    console.log ('root element patched is:' , root);
     
-    while (deltaBlockUid !== '0') {
-      var deltaBlock = bmp.getBlockByUid (deltaBlockUid);
-      var parts = deltaBlock.route.split ('!');
-      var oldieDelta = parts[0].split ('/').map(function (s) { return parseInt(s); });
-      var newlyDelta = parts[1].split ('/').map(function (s) { return parseInt(s); });
+    sortDeltaBlocksList (deltasInfosList);
 
-      var infos = {
-        ops: deltaBlock.sort,
-        oldieDelta: oldieDelta,
-        oldieRoute: [0],
-        oldieBlock: deltaBlock.oldie && bmp.getBlockByUid (deltaBlock.oldie),
-        newlyDelta: newlyDelta,
-        newlyRoute: [0],
-        newlyBlock: deltaBlock.newly &&   bmp.getBlockByUid (deltaBlock.newly),
-        level: 0,
-        chidx: 0,
-      };
+    deltasInfosList.map(function (di) {
+      var oldie = di.oldieBlock && di.oldieBlock.name;
+      var newly = di.newlyBlock && di.newlyBlock.name;
+      var route = di.oldieDelta.join('/') + '!' + di.newlyDelta.join('/');
+      
+      console.log(((di.rank) + " " + (di.ops) + " oldie: " + oldie + " newly: " + newly + " " + route));
+    });
     
+     rebaseDeltasBlocksList (deltasInfosList , 0);
+      console.log('after rebasing:', deltasInfosList);
+
+    deltasInfosList.map(function (di) {
+      var oldie = di.oldieBlock && di.oldieBlock.name;
+      var newly = di.newlyBlock && di.newlyBlock.name;
+      var route = di.oldieDelta.join('/') + '!' + di.newlyDelta.join('/');
+      
+      console.log(((di.rank) + " " + (di.ops) + " oldie: " + oldie + " newly: " + newly + " " + route));
+    });
+
+    deltasInfosList.map (function (infos, rank) {
       console.log('patch #' + rank);
-      // console.log (infos)
+      console.log ('infos (sort, route)', infos.ops, infos.oldieRoute, infos.newlyRoute);
     
       patchDOM (root, infos, options);
-    
-      deltaBlockUid = deltaBlock.next;
-      rank++;
-    }
+      
+      
+    });
   };
 
   var mount = function (bmp, vtree, container) {
     //const treeBlock = bmp.getBlockByUid (vtree.uid)
-    var deltas = diff (bmp, null, vtree);
+    var deltas = diff (bmp, empty (bmp), vtree);
 
     deltas.container = container;
-      
+    vtree.container = container;
+    
     patch (bmp, deltas, { remebmer:  false });
   };
 
@@ -1228,7 +1425,11 @@
         console.log('*** wrapped.h ***');
         
         return createVNode (bmp, tagname, attrs, children)
-      },  
+      },
+      
+      empty: function empty$1 () {
+        return empty ( bmp )
+      },
       
       mount: function mount$1 (tree, rootElement) {
         console.log('*** wrapped.mount ***');
@@ -1264,68 +1465,44 @@
   // with values taken from /A-Za-z$_0-9/
   var domulo = wrap({ key: 'peaceful '});
 
-  var TodoItem = function (props) {
-    return domulo.h('li', { className: 'todo-item' },
-      domulo.h('p', {}, 
-        'tile: ',  domulo.h('span', {}, props.title),
-        ' ',
-        'status: ', domulo.h('span', {}, props.done)
-      )
+  var root = document.getElementById('todos-app');
+
+  var tree1 = domulo.h('section', {},
+    domulo.h ('h2', {}, 'h1-1'),
+    domulo.h('ul', {}, 
+      domulo.h('li', {}, 'li-1-1'),
+      domulo.h('li', {}, 'li-1-2')
     )
-  };
-
-  var TodoList = function (props) {
-    return domulo.h('section', { className: 'todo-list'},
-      domulo.h('h1', {}, 'Todo List items'),
-      domulo.h('ul', {}, 
-        props.todos.map(function (todo) { return TodoItem(todo); })
-      )
-    )
-  };
-
-  // feed some data...
-  var props = {
-    todos:  [
-      { title: 'todo-1', priority: 1, done: false },
-      { title: 'todo-2', priority: 5, done: false },
-      { title: 'todo-3', priority: 4, done: true },
-      { title: 'todo-4', priority: 2, done: false },
-      { title: 'todo-5', priority: 3, done: true }
-    ]
-  };
-
-  // build the VDOM tree...
-  var tree = TodoList (props);
-
-  var tree1 = domulo.h('ul', {}, 
-    domulo.h('li', {}, 'item-1'),
-    domulo.h('li', {}, 'item-2'),
-    domulo.h('li', {}, 'item-3')
   );
+
+  var tree2 = domulo.h('section', {},
+    domulo.h('ul', {}, 
+      domulo.h('li', {}, 'li-2-1'),
+      domulo.h('li', {}, 'li-2-2')
+    ),
+    domulo.h ('h2', {}, 'h1-2')
+  );
+
 
   console.log('@/test/domulo/app');
 
   console.log('==== domulo.showDebug(tree)');
-  console.log(domulo.showDebug(tree));
+  console.log(domulo.showDebug(tree1));
+  console.log(domulo.showDebug(tree2));
 
   console.log('=== domulo.render(tree) string representation ===');
-  console.log(domulo.render (tree, { beautify: true }));
+  console.log ('tree 1');
+  console.log(domulo.render (tree1, { beautify: true }));
+  console.log ('tree 2');
+  console.log(domulo.render (tree2, { beautify: true }));
 
   console.log('=== diff trees ===');
 
-  /*
-  const trees = [null, tree]
-
-  trees.map((tree) => {
-    trees.map((other) => {
-      console.log('diff: %s %s', tree, other)
-      domulo.diff(tree, other)
-      console.log('')
-    })
-  })
-  */
-
   console.log('mounting on real DOM (use script inside browser)');
-  domulo.mount(tree, document.getElementById('todos-app'));
+  domulo.mount(tree1, root);
+
+  var patch$1 = domulo.diff (tree1, tree2);
+
+  domulo.patch (patch$1, root);
 
 }));

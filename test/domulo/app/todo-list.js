@@ -6,7 +6,10 @@ export const TodoList = (props) => {
   return domulo.h('section', { className: 'todo-list'},
     domulo.h('h1', {}, 'Todo List items'),
     domulo.h('ul', {}, 
-      props.todos.map(todo => TodoItem(todo))
+      props.todos.map((todo, idx) => { 
+        todo.idx = idx
+        return TodoItem(todo) 
+      })
     )
   )
 }

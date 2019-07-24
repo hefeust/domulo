@@ -1,0 +1,124 @@
+
+EDIT: as @Bergi pointed me out, there's a need to give code samples and output examples... It's tricky to be DOM independant code, cause this is the piece which deals with it... I will try to simplify my approach !
+
+## the Vtrees samples:
+
+I can use this DOM sample:
+
+    const tree1 = domulo.h ('section', {}, 
+      domulo.h ('h2', {}, 'heading in tree-1'),
+      domulo.h ('ul', {},
+        domulo.h ('li', {}, 'li-1 in tree-1'),
+        domulo.h ('li', {}, 'li-2 in tree-1')
+      )
+    )
+    
+    const tree2 = domulo.h ('section', {}, 
+      domulo.h ('ul', {},
+        domulo.h ('li', {}, 'li-1 in tree-2'),
+        domulo.h ('li', {}, 'li-2 in tree-2')
+      )
+      domulo.h ('h2', {}, 'heading in tree-2'),
+    )
+
+    const deltas = diff (tree1, tree2)
+    
+    domulo.mount (tree1, document.getElementById ('todo-app'))
+    
+    domulo.patch ( deltas )
+    
+## collected patches informations:
+
+Basically I'm able to compute, for each delta step of the diff match a string (or two arrays) , eadily convertible in two arrays of numbers using String splits and parseInt...
+
+    # indices: path/to/oldie!path/to/newly
+    
+    0!0        initialisation value
+    0!0/1      from root in tree-1 to heading in tree-2
+    0/1!0      from ul in tree-1 to section in tree-2           
+    0/0!0/0    from heding in tre-1 to ul in tree-1
+    
+    # and so on...
+    
+
+## the main routine:
+
+     // wrapped patch function using blocks memory pool data strucutre (bmp)
+     export const patch = (bmp, deltas, options) => {
+       const root = deltas.container
+       
+       // grab the whole patches deltas blocks list (OK
+       const deltasInfosList = collectDeltaInfos (bmp, bmp.getBlockByUid (deltas.uid))
+       
+       // patch delta step order in list
+       let rank = 0
+  
+       // sort patch delmtas
+       // - natural order if they are inserrtioyns
+       // - reverse order if they are deltions 
+       sortDeltaBlocksList (deltasInfosList)
+
+       deltasInfosList.map ((infos, rank) => {
+         
+         // optional: rebase patches deltas arrays ??? 
+         rebaseDeltasBlocksList (deltasInfosList , rank)
+      
+         patchDOM (root, infos, options)
+      })
+    }
+
+## The discovering node mechanism:
+
+T apply prperly patches deltas I use a discovering node routine:
+
+    const discoverNodes = (root, infos) => {
+      const { oldieDelta, newlyDelta } = infos  
+      const iterate = (route, nav, shift) => {
+        let children = null
+        let level = shift
+        if (shift === 1) {
+          nav.oldieNode = nav.root
+          nav.root = nav.root.parentNode
+         return 
+       }
+       while (level + shift < route.length) {
+         children = nav.root.childNodes
+          if (route [level] < children.length) {
+            nav.root = children [ route [level] ]
+            nav.oldieNode = nav.root.childNodes [ route [level + 1 ] ]
+          }
+          level++
+        }
+      }
+      let shift = 0
+      let nav = { root, oldieNode: null }
+      if (oldieDelta.length > 1) {
+        iterate (oldieDelta, nav, shift)
+        shift = 1
+      } else {
+        shift = 0
+      }
+      iterate (newlyDelta, nav, shift)
+      console.log ('discoverNodes result (root, oldieNode)', nav.root, nav.oldieNode)
+      return nav
+    }
+ 
+And at this point of editing this post, my feeling is "be DOM independant ? Huh ! Why not in fact ?" : the process of getting node children count, resampling positions... could be done outside patching (again sepcial thanks to @Bergi)
+
+As I have seen in sonme old VueJS runtime demos, it fills the DOM with HTML comments ! Why ? to avoid indices recomputations in deltas
+
+- if you delete a node, consecutive patch deltas have their indices decremented by 1
+- if you insert a node, consecutive patch deltas have their indices incremented by 1
+
+## a trick thing but:
+
+can I separate completely deltas computations from DOM ? I guess the answer is YES : thus implies holding somewhere close to VNodes their effective number of children...
+
+Trying to rewrite that.
+Actual code will be commited sooner !
+Regards
+ 
+
+
+
+

@@ -3,6 +3,7 @@
 import { createBMP } from '@/src/domulo/core/bmp'
 import { createBlock, clearBlock } from '@/src/domulo/vdom/data-blocks'
 import { createVNode } from '@/src/domulo/vdom/create-vnode'
+import { empty } from '@/src/domulo/vdom/empty'
 import { mount } from '@/src/domulo/vdom/mount'
 import { render } from '@/src/domulo/vdom/render'
 import { diff } from '@/src/domulo/vdom/diff'
@@ -19,7 +20,11 @@ export const wrap = (options) => {
       console.log('*** wrapped.h ***')
       
       return createVNode (bmp, tagname, attrs, children)
-    },  
+    },
+    
+    empty () {
+      return empty ( bmp )
+    },
     
     mount (tree, rootElement) {
       console.log('*** wrapped.mount ***')

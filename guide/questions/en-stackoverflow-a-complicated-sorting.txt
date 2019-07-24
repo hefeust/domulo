@@ -1,0 +1,47 @@
+
+
+
+Hi there !
+
+I'm trying to roll my own implementation a of JS VDOM library. It's called "domulo", and is located inside the repo : http://github.com/hefeust/domulo.git
+
+Beyond the scenne, it uses a reuasable Blocks Memory Pool management system.
+
+Many thing are OK :
+
+- the hypersciript function sending its results inside the pool
+- DOM to string rendering
+- basic diffing and patching for new (insert) nodes
+- basic patching
+
+The problem now is to PROPERLY sort patches array items BEFORE applying them .
+
+Each patch records at least 4 fields :
+
+- ops: PATCH_INSERT_NODE | PATCH_UPDATE_NODE | PATCH_DLEETE_NODE (NODE or TEXT or ATTR...)
+- route: path/to/old/node!path/to/new/node
+- oldie block reference in VDOM (pooled blocksà
+- newlyie block reference in VDOM (pooled blocksà
+
+But...
+
+I have to sort patch in a way that:
+
+- if patch is delete node/attr it must appear before insertion, update AND deeper patches in real DOM MUST come before  less diver ones
+- insert and update patches keep sorted as the come from the diff ones, ie: the deeper they are, the later they apply
+
+Patch paths are the form:
+
+- 0!0/0/1 fir oure insertiuons
+- 0/0/1!0 for pure deletions
+- 0/1!0/2: (mixed) for updates
+
+... and can be converted easily in two arrays: oldieRoute and newlyRoute, using String splitting during visit of the real DOM
+
+QUESTION:
+
+given a list of patches, how to  sort it properly to apply patches in the correct order ?
+
+Thanks in advance, F-E
+
+

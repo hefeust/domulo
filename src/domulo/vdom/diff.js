@@ -46,14 +46,23 @@ const createPatchBlock = (bmp, patch, params) => {
   // console.log('######### createPatchBlock')
   // console.log (params)
   
-  newPatchBlock.sort = params.sort || '#/a!'
-  newPatchBlock.rel = params.rel || '#/a!'
+  newPatchBlock.sort = params.sort || '#void!'
+  // newPatchBlock.rel = params.rel || '#/a!'
 
   // patching route
-  newPatchBlock.route = params.route && params.route.oldie.join('/') + '!' + params.route.newly.join('/')
+  // newPatchBlock.route = params.route && params.route.oldie.join('/') + '!' + params.route.newly.join('/')
+
+  newPatchBlock.route = params.route && [params.route.oldie.join('/'), params.route.newly.join('/')].join('!')
 
   newPatchBlock.oldie = params.oldie
   newPatchBlock.newly = params.newly
+
+  if (newPatchBlock.sort === '#void!') {
+    console.log (params)
+    // console.log('oldie', oldie)
+    //console.log('newly', newly)
+    throw new Error ()
+  }
 
   patch.patchBlock.next = newPatchBlock.uid
   patch.patchBlock = newPatchBlock
@@ -127,11 +136,11 @@ const getNodesBlocksList = (bmp, block) => {
  */
 const diffTagsBlocks = (bmp, oldTagBlock, newTagBlock, route, patch) => {
   const bds = blocksDiffSort (oldTagBlock, newTagBlock)
-  let sort = BlockSorts.EMPTY
+  // let sort = BlockSorts.EMPTY
 
-  console.log('    diff tag blocks: ' + bds)
-  console.log ( oldTagBlock.name + ' ' + newTagBlock.name)
-  
+  // console.log('    diff tag blocks: ' + bds)
+  // console.log ( oldTagBlock.name + ' ' + newTagBlock.name)
+  try {
   switch (bds) {
     
     case DIFF_TYPES.TAG_TO_TAG:
@@ -165,9 +174,9 @@ const diffTagsBlocks = (bmp, oldTagBlock, newTagBlock, route, patch) => {
     case DIFF_TYPES.TEXT_TO_TAG:   
       createPatchBlock (bmp, patch, {
         sort: BlockSorts.PATCH_DELETE_TEXT,
-          oldie: oldTagBlock.uid,
-          newly: null,
-          route
+        oldie: oldTagBlock.uid,
+        newly: null,
+        route
       })
       
       createPatchBlock (bmp, patch, {
@@ -183,7 +192,7 @@ const diffTagsBlocks = (bmp, oldTagBlock, newTagBlock, route, patch) => {
       if (oldTagBlock.value === newTagBlock.value) return 
       
       createPatchBlock (bmp, patch, {
-        sort:BlockSorts.PATCH_UPDATE_TEXT,
+        sort:  BlockSorts.PATCH_UPDATE_TEXT,
         oldie: oldTagBlock.uid,
         newly: newTagBlock.uid,
         route
@@ -218,8 +227,6 @@ const diffTagsBlocks = (bmp, oldTagBlock, newTagBlock, route, patch) => {
     break 
     
     case DIFF_TYPES.EMPTY_TO_TAG: 
-      console.log('==========================')
-      
       createPatchBlock (bmp, patch, {
         sort: BlockSorts.PATCH_INSERT_NODE,
         oldie: null,
@@ -230,8 +237,14 @@ const diffTagsBlocks = (bmp, oldTagBlock, newTagBlock, route, patch) => {
     
     case DIFF_TYPES.EMPTY_TO_EMPTY: 
       // do nothing ...
-      return    
     break 
+  }
+  
+  } catch (error)  {
+    console.log (bds)
+    console.log ('oldTagBlock', oldTagBlock)
+    console.log ('newTagBlock', newTagBlock)
+    throw error
   }
 }
 
@@ -320,32 +333,26 @@ const diffNodesBlocks = (bmp, oldTagBlock, newTagBlock, route, patch) => {
   const olen = oldNodesList.length
   const nlen = newNodesList.length
   
-  console.log('BEFORE ZIP : %s %s', olen, nlen )
-  
   zip (oldNodesList, newNodesList).map((entry, idx) => {
-    console.log('zip ' + idx + ' ############################')
+     const oldie = route.oldie.slice (0)
+     const newly = route.newly.slice (0)
+     const diffRoute = { oldie, newly }
     
-//    console.log (route.oldie)
-//    console.log (route.newly)
+     if (olen > nlen) {
+       if (idx < nlen) {
+         newly.push (idx)
+       } else {
+         oldie.push (idx - nlen)
+       }
+     } else {
+       if (idx < olen) {
+         oldie.push (idx)
+       } else {
+         newly.push (idx - olen)
+       }       
+     }
     
-    //if (idx === 4) throw new Error('ERROR')
-    
-    if (nlen > olen) {
-      route.newly.push(idx)
-    } else {
-      route.oldie.push(idx)
-    }
-    
-    
-    diffTrees (bmp, entry[0], entry[1], route, patch)
-
-    //if (idx === 4) throw new Error('ERROR')
-
-    if (nlen > olen) {
-      route.newly.pop ()
-    } else {
-      route.oldie.pop ()
-    }
+    diffTrees (bmp, entry[0], entry[1], diffRoute, patch)
   })
 }
 
@@ -353,44 +360,21 @@ const diffTrees = (bmp, oldTree, newTree, route, patch) => {
   let oldTreeBlock
   let newTreeBlock
 
-  if (oldTree && newTree) {
-    // both new old and new tree exist
-    console.log ('### diff existing trees ###')
-    
-    oldTreeBlock = bmp.getBlockByUid (oldTree.uid)
-    newTreeBlock = bmp.getBlockByUid (newTree.uid)
-    
-    newTree.container = oldTree.container
-    
-  } else if (oldTree) {
-    // tree removal
-    console.log ('### tree removal ###')
+  console.log ('===== diffTrees =====')
+  console.log (oldTree)
+  console.log (newTree)
 
-    oldTreeBlock = bmp.getBlockByUid (oldTree.uid)
-    newTreeBlock = bmp.getEmptyBlock ()
-    
-    
-  } else if (newTree) {
-    // tree creation
-    console.log ('###  tree creation ###')
-  
-    oldTreeBlock = bmp.getEmptyBlock ()
-    newTreeBlock = bmp.getBlockByUid (newTree.uid)
-  
-  
+  if (oldTree && oldTree.uid !== '0') {
+    oldTreeBlock = bmp.getBlockByUid (oldTree.uid)    
   } else {
-    // otherwise,j do nothing
-    console.log ('### diff empty trees ###')
-
     oldTreeBlock = bmp.getEmptyBlock ()
-    newTreeBlock = bmp.getEmptyBlock ()
- 
   }
 
-
-  // diffTagsBlocks (bmp, oldTreeBlock, newTreeBlock, patch)
-  // diffAttrsBlocks (bmp, oldTreeBlock, newTreeBlock, patch)
-  //diffNodesBlocks (bmp, oldTreeBlock, newTreeBlock, patch)
+  if (newTree && newTree.uid !== '0') {
+    newTreeBlock = bmp.getBlockByUid (newTree.uid)    
+  } else {
+    newTreeBlock = bmp.getEmptyBlock ()
+  }
 
   diffTagsBlocks (bmp, oldTreeBlock, newTreeBlock, route, patch)
   diffAttrsBlocks (bmp, oldTreeBlock, newTreeBlock, route, patch)
@@ -405,7 +389,7 @@ export const diff = (bmp, oldTree, newTree) => {
   }
   
   patchBlock.sort = BlockSorts.PATCH
-//  patchBlock.rel = [oldTree && oldTree.uid, newTree && newTree.uid]
+  newTree.container = oldTree.container
   
   //diffTrees (bmp, oldTree, newTree, route, patch)
   diffTrees (bmp, oldTree, newTree, route, patch)
@@ -413,7 +397,8 @@ export const diff = (bmp, oldTree, newTree) => {
   return { 
     name: 'PATCH',
     uid: patchBlock.uid,
-    oldie: newTree.uid,
-    newly: newTree.uid
+    oldie: oldTree && oldTree.uid,
+    newly: newTree && newTree.uid,
+    container: oldTree.container
   }
 }
