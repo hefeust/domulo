@@ -8,10 +8,7 @@ const insertNode = (root, infos) => {
 }
 
 const updateNode = (root, infos) => {
-  const oldieNode = infos.oldieNode
-  const newlyNode = document.createElement (infos.newlyBlock.name)
   
-  root.replaceChild (newlyNode, oldieNode)
 }
 
 const deleteNode = (root, infos) => {
@@ -33,10 +30,7 @@ const insertText = (root, infos) => {
 }
 
 const updateText = (root, infos) => {
-  const oldieNode = infos.oldieNode
-  const newlyNode = document.createTextNode (infos.newlyBlock.value)
   
-  root.replaceChild (newlyNode, oldieNode)  
 }
 
 const deleteText = (root, infos) => {
@@ -175,13 +169,13 @@ const collectDeltaInfos = (bmp, deltaRootBlock) => {
     const infos = {
       ops: deltaBlock.sort,
       oldieDelta,
-//      oldieRoute: [0],
+      oldieRoute: [0],
       oldieBlock: deltaBlock.oldie && bmp.getBlockByUid (deltaBlock.oldie),
       newlyDelta,
-//      newlyRoute: [0],
+      newlyRoute: [0],
       newlyBlock: deltaBlock.newly &&   bmp.getBlockByUid (deltaBlock.newly),
-//      level: 0,
-//      chidx: 0,
+      level: 0,
+      chidx: 0,
       rank
     }
 
@@ -191,27 +185,39 @@ const collectDeltaInfos = (bmp, deltaRootBlock) => {
     deltaBlockUid = deltaBlock.next
   }  
 
+
+  console.log('collectDeltasInfos', deltaRootBlock)
+  
+  
+  
+  let ds = ds = deltas.map(d => 
+    `${d.rank} ${d.ops} oldie: ${d.oldieDelta.join(',')}  newly: ${d.newlyDelta.join(',')}`
+  )
+  
+  console.log (ds.join('\n'))
+    
+  
+  
+
   return deltas   
 }
 
 const INS_OPS = [
     BlockSorts.PATCH_INSERT_NODE,
-    BlockSorts.PATCH_INSERT_TEXT
-    // BlockSorts.PATCH_INSERT_ATTR,
+    BlockSorts.PATCH_INSERT_TEXT,
+    BlockSorts.PATCH_INSERT_ATTR,
 ]
 
 
 const DEL_OPS = [
     BlockSorts.PATCH_DELETE_NODE,
-    BlockSorts.PATCH_DELETE_TEXT
-    // BlockSorts.PATCH_DELETE_ATTR
+    BlockSorts.PATCH_DELETE_TEXT,
+    BlockSorts.PATCH_DELETE_ATTR,
 ]
 
 const sortDeltaBlocksList = (dbl) => {
   
   dbl.sort ((a, b) => {
-    const a_is_insert = INS_OPS.indexOf(a.ops) > -1
-    const b_is_insert = INS_OPS.indexOf(b.ops) > -1    
     const a_is_delete = DEL_OPS.indexOf(a.ops) > -1
     const b_is_delete = DEL_OPS.indexOf(b.ops) > -1
     
@@ -224,26 +230,13 @@ const sortDeltaBlocksList = (dbl) => {
       } else {
         return 0
       }
-      
-    } 
-/*    
-    else if (a_is_insert) {
-      // only a deletes ? a is smaller
-      return -1
-    } else if (b_is_insert) {
-      // only b deletes ? b is lsmaller
-      return 1      
-  
     } else if (a_is_delete) {
       // only a deletes ? a is smaller
       return -1
-    }
-    else if (b_is_delete) {
+    } else if (b_is_delete) {
       // only b deletes ? b is lsmaller
       return 1      
-    }
-    */
-      else {
+    } else {
       // NO DLETIONS AT ALL ? preserve order
       if (a.rank < b.rank) {
         return -1
@@ -256,63 +249,45 @@ const sortDeltaBlocksList = (dbl) => {
   })
 }
 
-const rebaseDeltasList = (dbl) => {
-  
-  console.log ('### rebase deltas list ###')
-  
-  const alter = (src ,tgt, arrayName, amount) => {
-    const position = tgt[arrayName].length - 1
-    let i = 0
-    
-    if(src[arrayName].length !== tgt[arrayName].length) return
-        
-    while (src[arrayName][i] ===  tgt[arrayName][i]) {
-      if (i === position && tgt[arrayName][i] > 0) 
-        tgt[arrayName][i] += amount
-      
-      if (i > src[arrayName].length) break
-      
-      i++ 
-    }
-  }
+const rebaseDeltasBlocksList = (dbl, rank) => {
   
   for (let s = 0; s < dbl.length; s++) {
     const src = dbl [s]
-    const ops_is_delete = DEL_OPS.indexOf(src.ops) > -1
-    const ops_is_insert = INS_OPS.indexOf(src.ops) > -1
-    const route = src.oldieDelta.join('/') + '!' + src.newlyDelta.join('/')
+    const ops_is_delete = DEL_OPS.indexOf(dbl[s]) > -1
+    const ops_is_insert = INS_OPS.indexOf(dbl[s]) > -1
 
+    if (ops_is_delete) {
+      for (let t = s + 1; t < dbl.length; t++) {
+        const tgt = dbl [t]
+        let oldiePos = tgt.oldieDelta.length - 2
+        let i = 0
+        
+        while (src.oldieDelta[i] ===  tgt[t].oldieDelta[i]) {
+          if (i === oldiePos) tgt.oldieDelta[i]--
+          if (i > src.oldieDelta.length) break
+          i++ 
+        }
+      }
+    }    
 
- //   console.log (src.ops, route)
-    
-    for (let t = s + 1; t < dbl.length; t++) {
-      const tgt = dbl [t]
-      
-      if (ops_is_delete) {
-        alter (src, tgt, 'oldieDelta', -1)
-      }
-      
-      if (ops_is_insert) {
-        alter (src, tgt, 'newlyDelta', 1)
-      }
+    if (ops_is_insert) {
+      for (let t = s + 1; t < dbl.length; t++) {
+        const tgt = dbl [t]
+        let newlyPos = tgt.newlyDelta.length -  2
+                
+        let i = 0
+        
+        while (src.newlyDelta[i] ===  tgt[t].newlyDelta[i]) {
+          if (i === newlyPos) tgt.newlyDelta[i]++
+          if (i > src.newlyDelta.length) break
+          i++ 
+        }
+      }    
     }
+
   }
-}
 
-const showDeltaBlocksList = (dbl) => {
-  const results = []
-  
-  dbl.map(di => {
-    const oldie = di.oldieBlock && di.oldieBlock.name
-    const newly = di.newlyBlock && di.newlyBlock.name
-    const route = di.oldieDelta.join('/') + '!' + di.newlyDelta.join('/')
-    
-    results.push(`${di.rank} ${di.ops} oldie: ${oldie} newly: ${newly} ${route}`)
-  })
-  
-  return results.join ('\n')
 }
-
 
 /**
  * the patching algorithm
@@ -331,21 +306,34 @@ export const patch = (bmp, deltas, options) => {
   
   console.log ('===== patching real DOM... =====')
   console.log ('root element patched is:' , root)
-
-  console.log ('BEFORE SORTING AND REBASING')
-  console.log (showDeltaBlocksList (deltasInfosList) )
-
+  
   sortDeltaBlocksList (deltasInfosList)
 
-  console.log ('AFTER sorting, BEFORE rebasing')
-  console.log (showDeltaBlocksList (deltasInfosList) )
+  deltasInfosList.map(di => {
+    const oldie = di.oldieBlock && di.oldieBlock.name
+    const newly = di.newlyBlock && di.newlyBlock.name
+    const route = di.oldieDelta.join('/') + '!' + di.newlyDelta.join('/')
+    
+    console.log(`${di.rank} ${di.ops} oldie: ${oldie} newly: ${newly} ${route}`)
+  })
   
-  rebaseDeltasList (deltasInfosList)
+   rebaseDeltasBlocksList (deltasInfosList , 0)
+    console.log('after rebasing:', deltasInfosList)
 
-  console.log ('AFTER SORTING AND REBASING')
-  console.log (showDeltaBlocksList (deltasInfosList) )
-  
+  deltasInfosList.map(di => {
+    const oldie = di.oldieBlock && di.oldieBlock.name
+    const newly = di.newlyBlock && di.newlyBlock.name
+    const route = di.oldieDelta.join('/') + '!' + di.newlyDelta.join('/')
+    
+    console.log(`${di.rank} ${di.ops} oldie: ${oldie} newly: ${newly} ${route}`)
+  })
+
   deltasInfosList.map ((infos, rank) => {
+    console.log('patch #' + rank)
+    console.log ('infos (sort, route)', infos.ops, infos.oldieRoute, infos.newlyRoute)
+  
     patchDOM (root, infos, options)
+    
+    
   })
 }

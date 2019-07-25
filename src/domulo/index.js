@@ -1,5 +1,4 @@
 
-
 import { createBMP } from '@/src/domulo/core/bmp'
 import { createBlock, clearBlock } from '@/src/domulo/vdom/data-blocks'
 import { createVNode } from '@/src/domulo/vdom/create-vnode'
@@ -9,9 +8,17 @@ import { render } from '@/src/domulo/vdom/render'
 import { diff } from '@/src/domulo/vdom/diff'
 import { patch } from '@/src/domulo/vdom/patch'
 
+console.log('@/src/domulo/index')
 
-console.log('@/test/domulo/app/wrap')
-
+/**
+ * domulo main wrapper
+ * 
+ * options are:
+ * - seed: a 8-digits string (example: 'GoodCafe'
+ * 
+ * @param {object} options
+ * @returns {wrap.wrapper}
+ */
 export const wrap = (options) => {
   const bmp = createBMP(createBlock, clearBlock, options)
   
@@ -50,8 +57,6 @@ export const wrap = (options) => {
       console.log(bmp.showDebug(verbose))
     }
   }
-  
-  // setup (options)
   
   return wrapper
 }

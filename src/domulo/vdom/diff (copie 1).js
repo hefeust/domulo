@@ -1,6 +1,5 @@
 
 import { BlockSorts} from '@/src/domulo/vdom/data-blocks'
-import { collectList } from '@/src/domulo/vdom/collect-list'
 
 /**
  * the patch types 
@@ -68,6 +67,61 @@ const createPatchBlock = (bmp, patch, params) => {
   patch.patchBlock.next = newPatchBlock.uid
   patch.patchBlock = newPatchBlock
 }
+
+/**
+ * get attrs blocks list
+ * 
+ * @TODO move to separate file
+ * 
+ * @param {type} bmp
+ * @param {type} block
+ * @returns {Array|getAttrsBlocksList.list}
+ */
+const getAttrsBlocksList = (bmp, block) => {
+  const list = []
+  let attrBlock = null
+  let attrBlockUID = block.attrs 
+  
+  while (attrBlockUID !== '0') {
+    attrBlock = bmp.getBlockByUid(attrBlockUID)
+    list.push (attrBlock)
+    attrBlockUID = attrBlock.next
+  }
+  
+  return list
+}
+
+/**
+ * get nodes blocks list
+ * 
+ * @TODO move to separate file
+ * 
+ * @param {type} bmp
+ * @param {type} block
+ * @returns {Array|getAttrsBlocksList.list}
+ */
+const getNodesBlocksList = (bmp, block) => {
+  const list = []
+  let nodeBlock = null
+  let nodeBlockUID = block.nodes 
+  
+///  console.log ("-----")
+//  console.log (bmp)
+//  console.log ("-----")
+
+  // console.log ('* getNodesBlocksList * ')
+    
+  while (nodeBlockUID !== '0') {
+    nodeBlock = bmp.getBlockByUid(nodeBlockUID)
+    // console.log('node: name=%s sort=%s', nodeBlock.name, nodeBlock.sort)
+    list.push (nodeBlock)
+    nodeBlockUID = nodeBlock.next
+  }
+  
+  return list
+
+}
+
 
 /**
  * diff two tags blocks
@@ -203,37 +257,53 @@ const diffTagsBlocks = (bmp, oldTagBlock, newTagBlock, route, patch) => {
  * @param {type} patch
  * @returns {undefined}
  */
-const diffAttrsBlocks = (bmp, oldieTagBlock, newlyTagBlock, route, patch) => {
-  const oldieAttrsList = collectList (bmp, oldieTagBlock.attrs)
-  const newlyAttrsList = collectList (bmp, newlyTagBlock.attrs)
+const diffAttrsBlocks = (bmp, oldTagBlock, newTagBlock, route, patch) => {
+  const oldAttrsList = getAttrsBlocksList (bmp, oldTagBlock)
+  const newAttrsList = getAttrsBlocksList (bmp, newTagBlock)
   const collected = new Set()
   
-  oldieAttrsList.map ((oldie, oidx) => {
-    newlyAttrsList.map ((newly, nidx) => {
-      if (oldie.name === newly.name) {
-        collected.add (oldie.name)
+  let found = false
+  
+  oldAttrsList.map ((oldAttrBlock) => {
+    
+    newAttrsList.map((newAttrBlock) => {
+      
+      if(oldAttrBlock.name === newAttrBlock.name) {
+        collected.add (oldAttrBlock.name)
         
-        createPatchBlock (bmp, patch, {
-          sort: BlockSorts.PATCH_UPDATE_ATTR,
-          oldie: oldie.uid,
-          newly: newly.uid,
-          route
-        })
+        if (oldAttrBlock.value !== newAttrBlock.value) {
+          createPatchBlock (bmp, patch, {
+            sort: BlockSorts.PATCH_UPDATE_ATTR,
+            oldie: oldAttrBlock.uid,
+            newly: newAttrBlock.uid,
+            route
+          })
+        }
       }
-    })    
+    })
   })
-
-  oldieAttrsList.map((oldie, oidx) => {
-    if (false === collected.has(oldie.name)) {
+  
+  oldAttrsList.map((oldAttrBlock) => {
+    if (! collected.has(oldAttrBlock.name)) {
       createPatchBlock (bmp, patch, {
         sort: BlockSorts.PATCH_DELETE_ATTR,
-        oldie: oldie.uid,
-        newly: newly.uid,
+        oldie: oldAttrBlock.uid,
+        newly: null,
         route
-      })      
+     })      
     }
   })
   
+  newAttrsList.map((newAttrBlock) => {
+    if (! collected.has(newAttrBlock.name)) {
+      createPatchBlock (bmp, patch, {
+        sort: BlockSorts.PATCH_INSERT_ATTR,
+        oldie: null,
+        newly: newAttrBlock.uid,
+        route
+     })      
+    }
+  })  
 }
 
 
@@ -245,6 +315,10 @@ const diffAttrsBlocks = (bmp, oldieTagBlock, newlyTagBlock, route, patch) => {
  * @returns {Array}
  */
 const zip = (arr0, arr1) => {
+  
+  // console.log(arr0)
+  // console.log(arr1)
+  
   if(arr0.length >= arr1.length) {
     return arr0.map ((x0, idx0) => [x0, arr1[idx0]])
   } else {
@@ -253,16 +327,16 @@ const zip = (arr0, arr1) => {
 }
 
 
-const diffNodesBlocks = (bmp, oldieTagBlock, newlyTagBlock, route, patch) => {
-  const oldieNodesList = collectList (bmp, oldieTagBlock.nodes)
-  const newlyNodesList = collectList (bmp, newlyTagBlock.nodes)
-  const olen = oldieNodesList.length
-  const nlen = newlyNodesList.length
+const diffNodesBlocks = (bmp, oldTagBlock, newTagBlock, route, patch) => {
+  const oldNodesList = getNodesBlocksList (bmp, oldTagBlock) 
+  const newNodesList = getNodesBlocksList (bmp, newTagBlock) 
+  const olen = oldNodesList.length
+  const nlen = newNodesList.length
   
-  zip (oldieNodesList, newlyNodesList).map((zipped, idx) => {
+  zip (oldNodesList, newNodesList).map((entry, idx) => {
      const oldie = route.oldie.slice (0)
      const newly = route.newly.slice (0)
-     const nodeRoute = { oldie, newly }
+     const diffRoute = { oldie, newly }
     
      if (olen > nlen) {
        if (idx < nlen) {
@@ -278,7 +352,7 @@ const diffNodesBlocks = (bmp, oldieTagBlock, newlyTagBlock, route, patch) => {
        }       
      }
     
-    diffTrees (bmp, zipped[0], zipped[1], nodeRoute, patch)
+    diffTrees (bmp, entry[0], entry[1], diffRoute, patch)
   })
 }
 

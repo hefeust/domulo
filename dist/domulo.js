@@ -541,6 +541,32 @@
   };
 
   /**
+   * collect a list of blocks, given its head block
+   * 
+   * used for collecting:
+   * - attrs
+   * - subnodes
+   * - deltas for patches
+   * 
+   * @param {Object} bmp
+   * @param {Object} headBlock
+   * @returns {Array<Object>}
+   */
+  var collectList = function (bmp, firstBlockUid) {
+    var list = [];
+    var blockUid = firstBlockUid;
+    
+    while (blockUid !== '0') {
+      var block = bmp.getBlockByUid (blockUid);
+      
+      list.push (block);
+      blockUid = block.next;
+    }
+    
+    return list
+  };
+
+  /**
    * the patch types 
    * @type ENUM
    */
@@ -606,61 +632,6 @@
     patch.patchBlock.next = newPatchBlock.uid;
     patch.patchBlock = newPatchBlock;
   };
-
-  /**
-   * get attrs blocks list
-   * 
-   * @TODO move to separate file
-   * 
-   * @param {type} bmp
-   * @param {type} block
-   * @returns {Array|getAttrsBlocksList.list}
-   */
-  var getAttrsBlocksList = function (bmp, block) {
-    var list = [];
-    var attrBlock = null;
-    var attrBlockUID = block.attrs; 
-    
-    while (attrBlockUID !== '0') {
-      attrBlock = bmp.getBlockByUid(attrBlockUID);
-      list.push (attrBlock);
-      attrBlockUID = attrBlock.next;
-    }
-    
-    return list
-  };
-
-  /**
-   * get nodes blocks list
-   * 
-   * @TODO move to separate file
-   * 
-   * @param {type} bmp
-   * @param {type} block
-   * @returns {Array|getAttrsBlocksList.list}
-   */
-  var getNodesBlocksList = function (bmp, block) {
-    var list = [];
-    var nodeBlock = null;
-    var nodeBlockUID = block.nodes; 
-    
-  ///  console.log ("-----")
-  //  console.log (bmp)
-  //  console.log ("-----")
-
-    // console.log ('* getNodesBlocksList * ')
-      
-    while (nodeBlockUID !== '0') {
-      nodeBlock = bmp.getBlockByUid(nodeBlockUID);
-      // console.log('node: name=%s sort=%s', nodeBlock.name, nodeBlock.sort)
-      list.push (nodeBlock);
-      nodeBlockUID = nodeBlock.next;
-    }
-    
-    return list
-
-  };
-
 
   /**
    * diff two tags blocks
@@ -796,51 +767,37 @@
    * @param {type} patch
    * @returns {undefined}
    */
-  var diffAttrsBlocks = function (bmp, oldTagBlock, newTagBlock, route, patch) {
-    var oldAttrsList = getAttrsBlocksList (bmp, oldTagBlock);
-    var newAttrsList = getAttrsBlocksList (bmp, newTagBlock);
+  var diffAttrsBlocks = function (bmp, oldieTagBlock, newlyTagBlock, route, patch) {
+    var oldieAttrsList = collectList (bmp, oldieTagBlock.attrs);
+    var newlyAttrsList = collectList (bmp, newlyTagBlock.attrs);
     var collected = new Set();
     
-    oldAttrsList.map (function (oldAttrBlock) {
-      
-      newAttrsList.map(function (newAttrBlock) {
-        
-        if(oldAttrBlock.name === newAttrBlock.name) {
-          collected.add (oldAttrBlock.name);
+    oldieAttrsList.map (function (oldie, oidx) {
+      newlyAttrsList.map (function (newly, nidx) {
+        if (oldie.name === newly.name) {
+          collected.add (oldie.name);
           
-          if (oldAttrBlock.value !== newAttrBlock.value) {
-            createPatchBlock (bmp, patch, {
-              sort: BlockSorts.PATCH_UPDATE_ATTR,
-              oldie: oldAttrBlock.uid,
-              newly: newAttrBlock.uid,
-              route: route
-            });
-          }
+          createPatchBlock (bmp, patch, {
+            sort: BlockSorts.PATCH_UPDATE_ATTR,
+            oldie: oldie.uid,
+            newly: newly.uid,
+            route: route
+          });
         }
-      });
+      });    
     });
-    
-    oldAttrsList.map(function (oldAttrBlock) {
-      if (! collected.has(oldAttrBlock.name)) {
+
+    oldieAttrsList.map(function (oldie, oidx) {
+      if (false === collected.has(oldie.name)) {
         createPatchBlock (bmp, patch, {
           sort: BlockSorts.PATCH_DELETE_ATTR,
-          oldie: oldAttrBlock.uid,
-          newly: null,
+          oldie: oldie.uid,
+          newly: newly.uid,
           route: route
-       });      
+        });      
       }
     });
     
-    newAttrsList.map(function (newAttrBlock) {
-      if (! collected.has(newAttrBlock.name)) {
-        createPatchBlock (bmp, patch, {
-          sort: BlockSorts.PATCH_INSERT_ATTR,
-          oldie: null,
-          newly: newAttrBlock.uid,
-          route: route
-       });      
-      }
-    });  
   };
 
 
@@ -852,10 +809,6 @@
    * @returns {Array}
    */
   var zip = function (arr0, arr1) {
-    
-    // console.log(arr0)
-    // console.log(arr1)
-    
     if(arr0.length >= arr1.length) {
       return arr0.map (function (x0, idx0) { return [x0, arr1[idx0]]; })
     } else {
@@ -864,16 +817,16 @@
   };
 
 
-  var diffNodesBlocks = function (bmp, oldTagBlock, newTagBlock, route, patch) {
-    var oldNodesList = getNodesBlocksList (bmp, oldTagBlock); 
-    var newNodesList = getNodesBlocksList (bmp, newTagBlock); 
-    var olen = oldNodesList.length;
-    var nlen = newNodesList.length;
+  var diffNodesBlocks = function (bmp, oldieTagBlock, newlyTagBlock, route, patch) {
+    var oldieNodesList = collectList (bmp, oldieTagBlock.nodes);
+    var newlyNodesList = collectList (bmp, newlyTagBlock.nodes);
+    var olen = oldieNodesList.length;
+    var nlen = newlyNodesList.length;
     
-    zip (oldNodesList, newNodesList).map(function (entry, idx) {
+    zip (oldieNodesList, newlyNodesList).map(function (zipped, idx) {
        var oldie = route.oldie.slice (0);
        var newly = route.newly.slice (0);
-       var diffRoute = { oldie: oldie, newly: newly };
+       var nodeRoute = { oldie: oldie, newly: newly };
       
        if (olen > nlen) {
          if (idx < nlen) {
@@ -889,7 +842,7 @@
          }       
        }
       
-      diffTrees (bmp, entry[0], entry[1], diffRoute, patch);
+      diffTrees (bmp, zipped[0], zipped[1], nodeRoute, patch);
     });
   };
 
@@ -946,6 +899,13 @@
     root.appendChild (newNode);
   };
 
+  var updateNode = function (root, infos) {
+    var oldieNode = infos.oldieNode;
+    var newlyNode = document.createElement (infos.newlyBlock.name);
+    
+    root.replaceChild (newlyNode, oldieNode);
+  };
+
   var deleteNode = function (root, infos) {
     console.log ('delete node');
     console.log (root);
@@ -962,6 +922,13 @@
     var newNode = document.createTextNode (infos.newlyBlock.value);
     
     root.appendChild (newNode);
+  };
+
+  var updateText = function (root, infos) {
+    var oldieNode = infos.oldieNode;
+    var newlyNode = document.createTextNode (infos.newlyBlock.value);
+    
+    root.replaceChild (newlyNode, oldieNode);  
   };
 
   var deleteText = function (root, infos) {
@@ -1055,9 +1022,11 @@
       break  
 
       case BlockSorts.PATCH_UPDATE_NODE: 
+        updateNode (root, infos);
       break
 
       case BlockSorts.PATCH_UPDATE_TEXT: 
+        updateText (root, infos);
       break
 
       case BlockSorts.PATCH_UPDATE_ATTR: 
@@ -1094,13 +1063,13 @@
       var infos = {
         ops: deltaBlock.sort,
         oldieDelta: oldieDelta,
-        oldieRoute: [0],
+  //      oldieRoute: [0],
         oldieBlock: deltaBlock.oldie && bmp.getBlockByUid (deltaBlock.oldie),
         newlyDelta: newlyDelta,
-        newlyRoute: [0],
+  //      newlyRoute: [0],
         newlyBlock: deltaBlock.newly &&   bmp.getBlockByUid (deltaBlock.newly),
-        level: 0,
-        chidx: 0,
+  //      level: 0,
+  //      chidx: 0,
         rank: rank
       };
 
@@ -1110,36 +1079,25 @@
       deltaBlockUid = deltaBlock.next;
     }  
 
-
-    console.log('collectDeltasInfos', deltaRootBlock);
-    
-    
-    
-    var ds = ds = deltas.map(function (d) { return ((d.rank) + " " + (d.ops) + " oldie: " + (d.oldieDelta.join(',')) + "  newly: " + (d.newlyDelta.join(','))); }
-    );
-    
-    console.log (ds.join('\n'));
-      
-    
-    
-
     return deltas   
   };
 
   var INS_OPS = [
       BlockSorts.PATCH_INSERT_NODE,
-      BlockSorts.PATCH_INSERT_TEXT,
-      BlockSorts.PATCH_INSERT_ATTR ];
+      BlockSorts.PATCH_INSERT_TEXT ];
 
 
   var DEL_OPS = [
       BlockSorts.PATCH_DELETE_NODE,
-      BlockSorts.PATCH_DELETE_TEXT,
-      BlockSorts.PATCH_DELETE_ATTR ];
+      BlockSorts.PATCH_DELETE_TEXT
+      // BlockSorts.PATCH_DELETE_ATTR
+  ];
 
   var sortDeltaBlocksList = function (dbl) {
     
     dbl.sort (function (a, b) {
+      var a_is_insert = INS_OPS.indexOf(a.ops) > -1;
+      var b_is_insert = INS_OPS.indexOf(b.ops) > -1;    
       var a_is_delete = DEL_OPS.indexOf(a.ops) > -1;
       var b_is_delete = DEL_OPS.indexOf(b.ops) > -1;
       
@@ -1152,13 +1110,26 @@
         } else {
           return 0
         }
+        
+      } 
+  /*    
+      else if (a_is_insert) {
+        // only a deletes ? a is smaller
+        return -1
+      } else if (b_is_insert) {
+        // only b deletes ? b is lsmaller
+        return 1      
+    
       } else if (a_is_delete) {
         // only a deletes ? a is smaller
         return -1
-      } else if (b_is_delete) {
+      }
+      else if (b_is_delete) {
         // only b deletes ? b is lsmaller
         return 1      
-      } else {
+      }
+      */
+        else {
         // NO DLETIONS AT ALL ? preserve order
         if (a.rank < b.rank) {
           return -1
@@ -1171,45 +1142,63 @@
     });
   };
 
-  var rebaseDeltasBlocksList = function (dbl, rank) {
+  var rebaseDeltasList = function (dbl) {
+    
+    console.log ('### rebase deltas list ###');
+    
+    var alter = function (src ,tgt, arrayName, amount) {
+      var position = tgt[arrayName].length - 1;
+      var i = 0;
+      
+      if(src[arrayName].length !== tgt[arrayName].length) { return }
+          
+      while (src[arrayName][i] ===  tgt[arrayName][i]) {
+        if (i === position && tgt[arrayName][i] > 0) 
+          { tgt[arrayName][i] += amount; }
+        
+        if (i > src[arrayName].length) { break }
+        
+        i++; 
+      }
+    };
     
     for (var s = 0; s < dbl.length; s++) {
       var src = dbl [s];
-      var ops_is_delete = DEL_OPS.indexOf(dbl[s]) > -1;
-      var ops_is_insert = INS_OPS.indexOf(dbl[s]) > -1;
+      var ops_is_delete = DEL_OPS.indexOf(src.ops) > -1;
+      var ops_is_insert = INS_OPS.indexOf(src.ops) > -1;
+      var route = src.oldieDelta.join('/') + '!' + src.newlyDelta.join('/');
 
-      if (ops_is_delete) {
-        for (var t = s + 1; t < dbl.length; t++) {
-          var tgt = dbl [t];
-          var oldiePos = tgt.oldieDelta.length - 2;
-          var i = 0;
-          
-          while (src.oldieDelta[i] ===  tgt[t].oldieDelta[i]) {
-            if (i === oldiePos) { tgt.oldieDelta[i]--; }
-            if (i > src.oldieDelta.length) { break }
-            i++; 
-          }
+
+   //   console.log (src.ops, route)
+      
+      for (var t = s + 1; t < dbl.length; t++) {
+        var tgt = dbl [t];
+        
+        if (ops_is_delete) {
+          alter (src, tgt, 'oldieDelta', -1);
         }
-      }    
-
-      if (ops_is_insert) {
-        for (var t$1 = s + 1; t$1 < dbl.length; t$1++) {
-          var tgt$1 = dbl [t$1];
-          var newlyPos = tgt$1.newlyDelta.length -  2;
-                  
-          var i$1 = 0;
-          
-          while (src.newlyDelta[i$1] ===  tgt$1[t$1].newlyDelta[i$1]) {
-            if (i$1 === newlyPos) { tgt$1.newlyDelta[i$1]++; }
-            if (i$1 > src.newlyDelta.length) { break }
-            i$1++; 
-          }
-        }    
+        
+        if (ops_is_insert) {
+          alter (src, tgt, 'newlyDelta', 1);
+        }
       }
-
     }
-
   };
+
+  var showDeltaBlocksList = function (dbl) {
+    var results = [];
+    
+    dbl.map(function (di) {
+      var oldie = di.oldieBlock && di.oldieBlock.name;
+      var newly = di.newlyBlock && di.newlyBlock.name;
+      var route = di.oldieDelta.join('/') + '!' + di.newlyDelta.join('/');
+      
+      results.push(((di.rank) + " " + (di.ops) + " oldie: " + oldie + " newly: " + newly + " " + route));
+    });
+    
+    return results.join ('\n')
+  };
+
 
   /**
    * the patching algorithm
@@ -1227,35 +1216,22 @@
     
     console.log ('===== patching real DOM... =====');
     console.log ('root element patched is:' , root);
-    
+
+    console.log ('BEFORE SORTING AND REBASING');
+    console.log (showDeltaBlocksList (deltasInfosList) );
+
     sortDeltaBlocksList (deltasInfosList);
 
-    deltasInfosList.map(function (di) {
-      var oldie = di.oldieBlock && di.oldieBlock.name;
-      var newly = di.newlyBlock && di.newlyBlock.name;
-      var route = di.oldieDelta.join('/') + '!' + di.newlyDelta.join('/');
-      
-      console.log(((di.rank) + " " + (di.ops) + " oldie: " + oldie + " newly: " + newly + " " + route));
-    });
+    console.log ('AFTER sorting, BEFORE rebasing');
+    console.log (showDeltaBlocksList (deltasInfosList) );
     
-     rebaseDeltasBlocksList (deltasInfosList , 0);
-      console.log('after rebasing:', deltasInfosList);
+    rebaseDeltasList (deltasInfosList);
 
-    deltasInfosList.map(function (di) {
-      var oldie = di.oldieBlock && di.oldieBlock.name;
-      var newly = di.newlyBlock && di.newlyBlock.name;
-      var route = di.oldieDelta.join('/') + '!' + di.newlyDelta.join('/');
-      
-      console.log(((di.rank) + " " + (di.ops) + " oldie: " + oldie + " newly: " + newly + " " + route));
-    });
-
+    console.log ('AFTER SORTING AND REBASING');
+    console.log (showDeltaBlocksList (deltasInfosList) );
+    
     deltasInfosList.map (function (infos, rank) {
-      console.log('patch #' + rank);
-      console.log ('infos (sort, route)', infos.ops, infos.oldieRoute, infos.newlyRoute);
-    
       patchDOM (root, infos, options);
-      
-      
     });
   };
 
@@ -1280,7 +1256,7 @@
    * @param {Ovject} block
    * @returns {Array|getAttrsBlocksList.list}
    */
-  var getAttrsBlocksList$1 = function (bmp, block) {
+  var getAttrsBlocksList = function (bmp, block) {
     var list = [];
     var attrBlock = null;
     var attrBlockUID = block.attrs; 
@@ -1295,7 +1271,7 @@
   };
 
 
-  var getNodesBlocksList$1 = function (bmp, block) {
+  var getNodesBlocksList = function (bmp, block) {
     var list = [];
     var nodeBlock = null;
     var nodeBlockUID = block.nodes; 
@@ -1370,8 +1346,8 @@
   };
 
   var renderTagBlock = function (bmp, tagBlock, options) {
-    var attrsBlocksList = getAttrsBlocksList$1(bmp, tagBlock);
-    var nodesBlocksList = getNodesBlocksList$1(bmp, tagBlock);
+    var attrsBlocksList = getAttrsBlocksList(bmp, tagBlock);
+    var nodesBlocksList = getNodesBlocksList(bmp, tagBlock);
     
   //  console.log ( 'renderTagBlock name=%s attrs=%d nodes=%s', tagBlock.name, attrsBlocksList.length, nodesBlocksList.length)
 
@@ -1413,8 +1389,17 @@
     return options.head.join('\n') + '\n' + options.tail.join('\n')
   };
 
-  console.log('@/test/domulo/app/wrap');
+  console.log('@/src/domulo/index');
 
+  /**
+   * domulo main wrapper
+   * 
+   * options are:
+   * - seed: a 8-digits string (example: 'GoodCafe'
+   * 
+   * @param {object} options
+   * @returns {wrap.wrapper}
+   */
   var wrap = function (options) {
     var bmp = createBMP(createBlock, clearBlock, options);
     
@@ -1456,8 +1441,6 @@
         console.log(bmp.showDebug(verbose));
       }
     };
-    
-    // setup (options)
     
     return wrapper
   };

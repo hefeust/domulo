@@ -12,14 +12,16 @@ const tree1 = domulo.h('section', {},
   domulo.h ('h2', {}, 'h1-1'),
   domulo.h('ul', {}, 
     domulo.h('li', {}, 'li-1-1'),
-    domulo.h('li', {}, 'li-1-2')
+    domulo.h('li', {}, 'li-1-2'),
+    domulo.h('li', {}, 'li-1-3')
   )
 )
 
 const tree2 = domulo.h('section', {},
   domulo.h('ul', {}, 
     domulo.h('li', {}, 'li-2-1'),
-    domulo.h('li', {}, 'li-2-2')
+    domulo.h('li', {}, 'li-2-2'),
+    domulo.h('li', {}, 'li-2-3')
   ),
   domulo.h ('h2', {}, 'h1-2')
 )
